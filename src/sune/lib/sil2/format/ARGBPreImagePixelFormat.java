@@ -7,9 +7,9 @@ import java.nio.IntBuffer;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritablePixelFormat;
 
-public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
+public final class ARGBPreImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	
-	ARGBImagePixelFormat() {
+	ARGBPreImagePixelFormat() {
 	}
 	
 	@Override
@@ -34,12 +34,12 @@ public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	
 	@Override
 	public WritablePixelFormat<IntBuffer> getReadFormat() {
-		return WritablePixelFormat.getIntArgbInstance();
+		return WritablePixelFormat.getIntArgbPreInstance();
 	}
 	
 	@Override
 	public PixelFormat<IntBuffer> getWriteFormat() {
-		return PixelFormat.getIntArgbInstance();
+		return PixelFormat.getIntArgbPreInstance();
 	}
 	
 	@Override
@@ -75,18 +75,18 @@ public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	
 	@Override
 	public void setPixel(IntBuffer dst, int i, int r, int g, int b, int a) {
-		dst.put(i, ((r & 0xff) << 16) |
-		           ((g & 0xff) <<  8) |
-		           ((b & 0xff))       |
-		           ((a & 0xff) << 24));
+		dst.put(i, ImagePixelFormatUtils.linear2premult(((a & 0xff) << 24) |
+		                                                ((r & 0xff) << 16) |
+		                                                ((g & 0xff) <<  8) |
+		                                                ((b & 0xff))));
 	}
 	
 	@Override
 	public void setPixelPre(IntBuffer dst, int i, int r, int g, int b, int a) {
-		dst.put(i, ImagePixelFormatUtils.premult2linear(((a & 0xff) << 24) |
-		                                                ((r & 0xff) << 16) |
-		                                                ((g & 0xff) <<  8) |
-		                                                ((b & 0xff))));
+		dst.put(i, ((r & 0xff) << 16) |
+		           ((g & 0xff) <<  8) |
+		           ((b & 0xff))       |
+		           ((a & 0xff) << 24));
 	}
 	
 	@Override
@@ -96,12 +96,12 @@ public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	
 	@Override
 	public void setARGB(IntBuffer dst, int i, int argb) {
-		dst.put(i, argb);
+		dst.put(i, ImagePixelFormatUtils.linear2premult(argb));
 	}
 	
 	@Override
 	public void setARGBPre(IntBuffer dst, int i, int argb) {
-		dst.put(i, ImagePixelFormatUtils.premult2linear(argb));
+		dst.put(i, argb);
 	}
 	
 	@Override
@@ -111,12 +111,12 @@ public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	
 	@Override
 	public int getARGB(IntBuffer src, int i) {
-		return src.get(i);
+		return ImagePixelFormatUtils.premult2linear(src.get(i));
 	}
 	
 	@Override
 	public int getARGBPre(IntBuffer src, int i) {
-		return ImagePixelFormatUtils.linear2premult(src.get(i));
+		return src.get(i);
 	}
 	
 	@Override
@@ -131,6 +131,6 @@ public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	
 	@Override
 	public boolean isPremultiplied() {
-		return false;
+		return true;
 	}
 }

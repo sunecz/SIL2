@@ -15,6 +15,7 @@ public final class ImagePixelFormats {
 	public static final ImagePixelFormat<?> from(PixelFormat<?> format) {
 		switch(format.getType()) {
 			case INT_ARGB_PRE:
+				return new ARGBPreImagePixelFormat();
 			case INT_ARGB:
 				return new ARGBImagePixelFormat();
 			case BYTE_RGB:

@@ -87,7 +87,7 @@ final class InternalChannels<T extends Buffer> {
 		int epp = format.getElementsPerPixel();
 		for(int i = 0, l = output.capacity() / epp, color; i < l; ++i) {
 			color = input[i] & 0xff;
-			format.setPixel(output, i * epp, (color << shiftA) |
+			format.setARGB(output, i * epp, (color << shiftA) |
 			                                 (color << shiftR) |
 			                                 (color << shiftG) |
 			                                 (color << shiftB));
@@ -108,7 +108,7 @@ final class InternalChannels<T extends Buffer> {
 		int valueA = (alpha & 0xff) << shiftA;
 		for(int i = 0, l = output.capacity() / epp, color; i < l; ++i) {
 			color = input[i] & 0xff;
-			format.setPixel(output, i * epp, (color << shiftR) |
+			format.setARGB(output, i * epp, (color << shiftR) |
 			                                 (color << shiftG) |
 			                                 (color << shiftB) |
 			                                 (valueA));
@@ -130,7 +130,7 @@ final class InternalChannels<T extends Buffer> {
 		int epp = format.getElementsPerPixel();
 		int valueA = (alpha & 0xff) << shiftA;
 		for(int i = 0, l = output.capacity(); i < l; ++i) {
-			format.setPixel(output, i * epp, ((red  [i] & 0xff) << shiftR) |
+			format.setARGB(output, i * epp, ((red  [i] & 0xff) << shiftR) |
 			                                 ((green[i] & 0xff) << shiftG) |
 			                                 ((blue [i] & 0xff) << shiftB) |
 			                                 ((valueA)));
@@ -150,7 +150,7 @@ final class InternalChannels<T extends Buffer> {
 	public final void join(byte[] red, byte[] green, byte[] blue, byte[] alpha, T output) {
 		int epp = format.getElementsPerPixel();
 		for(int i = 0, l = output.capacity() / epp; i < l; ++i) {
-			format.setPixel(output, i * epp, ((alpha[i] & 0xff) << shiftA) |
+			format.setARGB(output, i * epp, ((alpha[i] & 0xff) << shiftA) |
 			                                 ((red  [i] & 0xff) << shiftR) |
 			                                 ((green[i] & 0xff) << shiftG) |
 			                                 ((blue [i] & 0xff) << shiftB));
