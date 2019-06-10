@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<project name="generate_jar" default="all">
+	<property name="jarname" value   ="sune-sil2-pre" />
+    <property name="dir.bin" location="bin/"          />
+	<property name="dir.src" location="src/"          />
+	<property name="dir.ver" location="versions/"     />
+	<target name="all" depends="jar,src">
+		<!-- Runs all the other targets. -->
+	</target>
+    <target name="jar">
+    	<echo message="Generating JAR file..." />
+        <jar destfile="${dir.ver}/${jarname}.jar" basedir="${dir.bin}" excludes="_test" />
+    </target>
+	<target name="src" depends="jar">
+    	<echo message="Generating source ZIP file..." />
+		<zip destfile="${dir.ver}/${jarname}-source.jar" basedir="${dir.src}" />
+    </target>
+</project>
