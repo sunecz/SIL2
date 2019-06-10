@@ -595,6 +595,14 @@ public final class IImage<T extends Buffer> {
 		 * @param angleDeg The angle, in degrees
 		 * @param value The value*/
 		public final void motionBlur(float angleDeg, float value) {
+			motionBlur(angleDeg, value, false);
+		}
+		
+		/**
+		 * Applies motion blur of the given angle to {@code this} image.
+		 * @param angleDeg The angle, in degrees
+		 * @param value The value*/
+		public final void motionBlur(float angleDeg, float value, boolean premultiply) {
 			int cos = FastMath.round(value * FastMath.cosDeg(angleDeg));
 			int sin = FastMath.round(value * FastMath.sinDeg(angleDeg));
 			int epp = format.getElementsPerPixel();
@@ -624,7 +632,8 @@ public final class IImage<T extends Buffer> {
 						// in a direction outside of the image, it is possible
 						// to end the loop early and save some cycles.
 						if((px >= 0 && py >= 0 && px < width && py < height)) {
-							iclr = format.getARGB(pixels, (py * width + px) * epp);
+							if((premultiply)) iclr = format.getARGBPre(pixels, (py * width + px) * epp);
+							else              iclr = format.getARGB   (pixels, (py * width + px) * epp);
 							suma += (iclr >> 24) & 0xff;
 							sumr += (iclr >> 16) & 0xff;
 							sumg += (iclr >>  8) & 0xff;
@@ -643,7 +652,8 @@ public final class IImage<T extends Buffer> {
 						// in a direction outside of the image, it is possible
 						// to end the loop early and save some cycles.
 						if((px >= 0 && py >= 0 && px < width && py < height)) {
-							iclr = format.getARGB(pixels, (py * width + px) * epp);
+							if((premultiply)) iclr = format.getARGBPre(pixels, (py * width + px) * epp);
+							else              iclr = format.getARGB   (pixels, (py * width + px) * epp);
 							suma += (iclr >> 24) & 0xff;
 							sumr += (iclr >> 16) & 0xff;
 							sumg += (iclr >>  8) & 0xff;
@@ -656,7 +666,8 @@ public final class IImage<T extends Buffer> {
 				int r = sumr / idiv;
 				int g = sumg / idiv;
 				int b = sumb / idiv;
-				format.setPixel(output, index, r, g, b, a);
+				if((premultiply)) format.setPixelPre(output, index, r, g, b, a);
+				else              format.setPixel   (output, index, r, g, b, a);
 			});
 		}
 		
