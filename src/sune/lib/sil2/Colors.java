@@ -393,41 +393,35 @@ public final class Colors {
 	}
 	
 	/**
-	 * Collection of methods used for conversion between different color
-	 * opacity formats, that being Linear Alpha and Premultiplied Alpha.*/
-	public static final class Conversion {
-		
-		/**
-		 * Converts a 32-bit color, given by the ARGB int, from linear alpha
-		 * to premultiplied alpha.
-		 * @param argb The color
-		 * @return The premultiplied color as an ARGB int*/
-		public static final int linear2premult(int argb) {
-			int a = argb >>> SHIFT_A;
-			int r = FastMath.div255(((argb >> SHIFT_R) & 0xff) * a);
-			int g = FastMath.div255(((argb >> SHIFT_G) & 0xff) * a);
-			int b = FastMath.div255(((argb >> SHIFT_B) & 0xff) * a);
-			return (argb & MASK_A) |
-				   (r  << SHIFT_R) |
-				   (g  << SHIFT_G) |
-				   (b  << SHIFT_B);
-		}
-		
-		/**
-		 * Converts a 32-bit color, given by the ARGB int, from premultiplied alpha
-		 * to linear alpha.
-		 * @param argb The color
-		 * @return The linear color as an ARGB int*/
-		public static final int premult2linear(int argb) {
-			int a = argb >>> SHIFT_A;
-			if((a == 0x0)) return 0x0;
-			int r = FastMath.mul255((argb >> SHIFT_R) & 0xff) / a;
-			int g = FastMath.mul255((argb >> SHIFT_G) & 0xff) / a;
-			int b = FastMath.mul255((argb >> SHIFT_B) & 0xff) / a;
-			return (argb & MASK_A) |
-				   (r  << SHIFT_R) |
-				   (g  << SHIFT_G) |
-				   (b  << SHIFT_B);
-		}
+	 * Converts a 32-bit color, given by the ARGB int, from linear alpha
+	 * to premultiplied alpha.
+	 * @param argb The color
+	 * @return The premultiplied color as an ARGB int*/
+	public static final int linear2premult(int argb) {
+		int a = argb >>> SHIFT_A;
+		int r = FastMath.div255(((argb >> SHIFT_R) & 0xff) * a);
+		int g = FastMath.div255(((argb >> SHIFT_G) & 0xff) * a);
+		int b = FastMath.div255(((argb >> SHIFT_B) & 0xff) * a);
+		return (argb & MASK_A) |
+			   (r  << SHIFT_R) |
+			   (g  << SHIFT_G) |
+			   (b  << SHIFT_B);
+	}
+	
+	/**
+	 * Converts a 32-bit color, given by the ARGB int, from premultiplied alpha
+	 * to linear alpha.
+	 * @param argb The color
+	 * @return The linear color as an ARGB int*/
+	public static final int premult2linear(int argb) {
+		int a = argb >>> SHIFT_A;
+		if((a == 0x0)) return 0x0;
+		int r = FastMath.mul255((argb >> SHIFT_R) & 0xff) / a;
+		int g = FastMath.mul255((argb >> SHIFT_G) & 0xff) / a;
+		int b = FastMath.mul255((argb >> SHIFT_B) & 0xff) / a;
+		return (argb & MASK_A) |
+			   (r  << SHIFT_R) |
+			   (g  << SHIFT_G) |
+			   (b  << SHIFT_B);
 	}
 }

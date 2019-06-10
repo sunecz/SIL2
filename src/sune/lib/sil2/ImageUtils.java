@@ -1,7 +1,6 @@
 package sune.lib.sil2;
 
 import java.nio.Buffer;
-import java.nio.IntBuffer;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
@@ -42,46 +41,8 @@ public final class ImageUtils {
 	
 	// ----- IMAGE PIXELS
 	
-	public static final <T extends Buffer> Buffer getPixelsBuffer(Image image) {
+	public static final <T extends Buffer> Buffer getPixels(Image image) {
 		return FXInternalUtils.getPlatformImageWrapper(image).bufferRewind();
-	}
-	
-	private static final <T extends Buffer> IntBuffer getPixels(Image image, int x, int y, int width, int height,
-			ImagePixelFormat<T> format) {
-		T pixels = format.newBuffer(width * height);
-		int stride = width * format.getElementsPerPixel();
-		image.getPixelReader().getPixels(x, y, width, height, format.getReadFormat(), pixels, stride);
-		return format.toIntBuffer(pixels);
-	}
-	
-	/**
-	 * Gets pixels from an area, specified by the given x- and y-coordinates and its width
-	 * and height, inside the given image.
-	 * @param image The image
-	 * @param x The x-coordinate of the area
-	 * @param y The y-coordinate of the area
-	 * @param width The width of the area
-	 * @param height The height of the area
-	 * @return The pixels as ARGB ints*/
-	public static final IntBuffer getPixels(Image image, int x, int y, int width, int height) {
-		if((image == null)) throw new NullPointerException("Invalid image");
-		if((width <= 0 || height <= 0))
-			throw new IllegalArgumentException("Invalid size");
-		if((x < 0 || y < 0 || x >= width || y >= height))
-			throw new IllegalArgumentException("Invalid position");
-		ImagePixelFormat<?> format = ImagePixelFormats.from(image.getPixelReader().getPixelFormat());
-		return getPixels(image, x, y, width, height, format);
-	}
-	
-	/**
-	 * Gets pixels of the given image.
-	 * @param image The image
-	 * @return The pixels as ARGB ints*/
-	public static final IntBuffer getPixels(Image image) {
-		if((image == null)) throw new NullPointerException("Invalid image");
-		int width  = (int) image.getWidth();
-		int height = (int) image.getHeight();
-		return getPixels(image, 0, 0, width, height);
 	}
 	
 	private static final <T extends Buffer> void setPixels(WritableImage image, int x, int y, int width, int height,
@@ -356,7 +317,7 @@ public final class ImageUtils {
 		@SuppressWarnings("unchecked")
 		ImagePixelFormat<T> format = (ImagePixelFormat<T>) ImagePixelFormats.from(image);
 		@SuppressWarnings("unchecked")
-		T pixels = (T) getPixelsBuffer(image);
+		T pixels = (T) getPixels(image);
 		T result = format.newBuffer(width * height);
 		fastresize(pixels, iwidth, iheight, result, width, height, format);
 		return create(width, height, result);
@@ -431,7 +392,7 @@ public final class ImageUtils {
 		@SuppressWarnings("unchecked")
 		ImagePixelFormat<T> format = (ImagePixelFormat<T>) ImagePixelFormats.from(image);
 		@SuppressWarnings("unchecked")
-		T pixels = (T) getPixelsBuffer(image);
+		T pixels = (T) getPixels(image);
 		ImageData data = fastrotate(pixels, width, height, angle, format);
 		return create(data.width, data.height, data.pixels);
 	}
@@ -453,7 +414,7 @@ public final class ImageUtils {
 	public static final void fill(WritableImage image, int color) {
 		if((image == null)) throw new NullPointerException("Invalid image");
 		ImagePixelFormat<?> format = ImagePixelFormats.from(image);
-		Buffer pixels = getPixelsBuffer(image);
+		Buffer pixels = getPixels(image);
 		fill(pixels, color, format);
 	}
 	
@@ -534,7 +495,7 @@ public final class ImageUtils {
 		if((dstw <= 0 || dstw > width || dsth <= 0 || dsth > height))
 			throw new IllegalArgumentException("Invalid destination size");
 		int epp = ImagePixelFormats.from(dst).getElementsPerPixel();
-		Buffer pixels = getPixelsBuffer(dst);
+		Buffer pixels = getPixels(dst);
 		repeat(src, srcx, srcy, srcw, srch, srcStride, pixels, dstx, dsty, dstw, dsth, width * epp, epp);
 	}
 	
@@ -561,7 +522,7 @@ public final class ImageUtils {
 		if((dstx >= width || dsty >= height))
 			throw new IllegalArgumentException("Invalid destination position");
 		int epp = ImagePixelFormats.from(dst).getElementsPerPixel();
-		Buffer pixels = getPixelsBuffer(dst);
+		Buffer pixels = getPixels(dst);
 		repeat(src, srcx, srcy, srcw, srch, srcStride, pixels, dstx, dsty, width, height, width * epp, epp);
 	}
 	
@@ -588,7 +549,7 @@ public final class ImageUtils {
 		if((srcw <= 0 || srcw > width || srch <= 0 || srch > height))
 			throw new IllegalArgumentException("Invalid destination size");
 		int epp = ImagePixelFormats.from(dst).getElementsPerPixel();
-		Buffer pixels = getPixelsBuffer(src);
+		Buffer pixels = getPixels(src);
 		repeat(pixels, srcx, srcy, srcw, srch, width * epp, dst, dstx, dsty);
 	}
 	
@@ -870,7 +831,7 @@ public final class ImageUtils {
 		@SuppressWarnings("unchecked")
 		ImagePixelFormat<T> format = (ImagePixelFormat<T>) ImagePixelFormats.from(image);
 		@SuppressWarnings("unchecked")
-		T pixels = (T) getPixelsBuffer(image);
+		T pixels = (T) getPixels(image);
 		flipHorizontal(pixels, width, height, format);
 		return image;
 	}
@@ -886,7 +847,7 @@ public final class ImageUtils {
 		@SuppressWarnings("unchecked")
 		ImagePixelFormat<T> format = (ImagePixelFormat<T>) ImagePixelFormats.from(image);
 		@SuppressWarnings("unchecked")
-		T pixels = (T) getPixelsBuffer(image);
+		T pixels = (T) getPixels(image);
 		flipVertical(pixels, width, height, format);
 		return image;
 	}
@@ -902,7 +863,7 @@ public final class ImageUtils {
 		@SuppressWarnings("unchecked")
 		ImagePixelFormat<T> format = (ImagePixelFormat<T>) ImagePixelFormats.from(image);
 		@SuppressWarnings("unchecked")
-		T pixels = (T) getPixelsBuffer(image);
+		T pixels = (T) getPixels(image);
 		flipLeft(pixels, width, height, format);
 		return create(height, width, pixels);
 	}
@@ -918,7 +879,7 @@ public final class ImageUtils {
 		@SuppressWarnings("unchecked")
 		ImagePixelFormat<T> format = (ImagePixelFormat<T>) ImagePixelFormats.from(image);
 		@SuppressWarnings("unchecked")
-		T pixels = (T) getPixelsBuffer(image);
+		T pixels = (T) getPixels(image);
 		flipRight(pixels, width, height, format);
 		return create(height, width, pixels);
 	}
@@ -969,9 +930,9 @@ public final class ImageUtils {
 		if((format != formatBGR || format != formatFGR))
 			throw new IllegalArgumentException("Invalid image pixel format");
 		@SuppressWarnings("unchecked")
-		T pixelsBGR = (T) getPixelsBuffer(background);
+		T pixelsBGR = (T) getPixels(background);
 		@SuppressWarnings("unchecked")
-		T pixelsFGR = (T) getPixelsBuffer(foreground);
+		T pixelsFGR = (T) getPixels(foreground);
 		combine(pixelsBGR, pixelsFGR, result, format);
 	}
 	
@@ -994,9 +955,9 @@ public final class ImageUtils {
 		if(!formatBGR.equals(formatFGR))
 			throw new IllegalArgumentException("Images do not have same image pixel format");
 		@SuppressWarnings("unchecked")
-		T pixelsBGR = (T) getPixelsBuffer(background);
+		T pixelsBGR = (T) getPixels(background);
 		@SuppressWarnings("unchecked")
-		T pixelsFGR = (T) getPixelsBuffer(foreground);
+		T pixelsFGR = (T) getPixels(foreground);
 		T buffer = formatBGR.newBuffer(width * height);
 		combine(pixelsBGR, pixelsFGR, buffer, formatBGR);
 		return create(width, height, buffer);
@@ -1018,9 +979,9 @@ public final class ImageUtils {
 		if(!formatBGR.equals(formatFGR))
 			throw new IllegalArgumentException("Images do not have same image pixel format");
 		@SuppressWarnings("unchecked")
-		T pixelsBGR = (T) getPixelsBuffer(background);
+		T pixelsBGR = (T) getPixels(background);
 		@SuppressWarnings("unchecked")
-		T pixelsFGR = (T) getPixelsBuffer(foreground);
+		T pixelsFGR = (T) getPixels(foreground);
 		combine(pixelsBGR, pixelsFGR, pixelsBGR, formatBGR);
 	}
 	

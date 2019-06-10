@@ -37,27 +37,17 @@ public final class BGRAPreImagePixelFormat implements ImagePixelFormat<ByteBuffe
 	
 	@Override
 	public WritablePixelFormat<ByteBuffer> getReadFormat() {
-		return WritablePixelFormat.getByteBgraInstance();
+		return WritablePixelFormat.getByteBgraPreInstance();
 	}
 	
 	@Override
 	public PixelFormat<ByteBuffer> getWriteFormat() {
-		return PixelFormat.getByteBgraInstance();
+		return PixelFormat.getByteBgraPreInstance();
 	}
 	
 	@Override
 	public ByteBuffer newBuffer(int length) {
 		return ByteBuffer.allocate(length * ELEMENTS_PER_PIXEL);
-	}
-	
-	@Override
-	public IntBuffer toIntBuffer(ByteBuffer buffer) {
-		return buffer.asIntBuffer();
-	}
-	
-	@Override
-	public ByteBuffer fromIntBuffer(IntBuffer buffer) {
-		return BufferUtils.intBuffer2byteBuffer(buffer);
 	}
 	
 	@Override

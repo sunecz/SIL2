@@ -9,6 +9,8 @@ import javafx.scene.image.WritablePixelFormat;
 
 public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	
+	private static final int ELEMENTS_PER_PIXEL = 1;
+	
 	ARGBImagePixelFormat() {
 	}
 	
@@ -44,17 +46,7 @@ public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	
 	@Override
 	public IntBuffer newBuffer(int length) {
-		return IntBuffer.allocate(length);
-	}
-	
-	@Override
-	public IntBuffer toIntBuffer(IntBuffer buffer) {
-		return buffer;
-	}
-	
-	@Override
-	public IntBuffer fromIntBuffer(IntBuffer buffer) {
-		return buffer;
+		return IntBuffer.allocate(length * ELEMENTS_PER_PIXEL);
 	}
 	
 	@Override
@@ -121,7 +113,7 @@ public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	
 	@Override
 	public int getElementsPerPixel() {
-		return 1;
+		return ELEMENTS_PER_PIXEL;
 	}
 	
 	@Override
