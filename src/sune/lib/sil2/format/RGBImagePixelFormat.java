@@ -85,18 +85,31 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 	}
 	
 	@Override
-	public void setPixel(ByteBuffer dst, int i, ByteBuffer src, int k) {
+	public void setPixelPre(ByteBuffer dst, int i, int r, int g, int b, int a) {
+		setPixel(dst, i, r, g, b, a);
+	}
+	
+	@Override
+	public void set(ByteBuffer dst, int i, ByteBuffer src, int k) {
 		dst.put(i,     src.get(k    ));
 		dst.put(i + 1, src.get(k + 1));
 		dst.put(i + 2, src.get(k + 2));
 	}
 	
 	@Override
-	public void setPixel(ByteBuffer dst, int i, int argb) {
+	public void setARGB(ByteBuffer dst, int i, int argb) {
 		setPixel(dst, i, (argb >> 16) & 0xff,
 		                 (argb >>  8) & 0xff,
 		                 (argb)       & 0xff,
 		                 (0xff >> 24) & 0xff);
+	}
+	
+	@Override
+	public void setARGBPre(ByteBuffer dst, int i, int argb) {
+		setPixelPre(dst, i, (argb >> 16) & 0xff,
+		                    (argb >>  8) & 0xff,
+		                    (argb)       & 0xff,
+		                    (argb >> 24) & 0xff);
 	}
 	
 	@Override
@@ -110,6 +123,11 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 			   ((src.get(i + 1) & 0xff) <<  8) |
 			   ((src.get(i + 2) & 0xff) << 16) |
 			   ((                 0xff) << 24);
+	}
+	
+	@Override
+	public int getARGBPre(ByteBuffer src, int i) {
+		return getARGB(src, i);
 	}
 	
 	@Override

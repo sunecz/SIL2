@@ -21,12 +21,18 @@ public interface ImagePixelFormat<T extends Buffer> {
 	T fromIntBuffer(IntBuffer buffer);
 	
 	void set(T dst, int i, int value);
+	void set(T dst, int i, T src, int k);
+	
 	void setPixel(T dst, int i, int r, int g, int b, int a);
-	void setPixel(T dst, int i, T src, int k);
-	void setPixel(T dst, int i, int argb);
+	void setPixelPre(T dst, int i, int r, int g, int b, int a);
+	
+	void setARGB(T dst, int i, int argb);
+	void setARGBPre(T dst, int i, int argb);
 	
 	int get(T src, int i);
+	
 	int getARGB(T src, int i);
+	int getARGBPre(T src, int i);
 	
 	int getElementsPerPixel();
 	

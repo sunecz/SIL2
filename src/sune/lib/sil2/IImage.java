@@ -407,7 +407,7 @@ public final class IImage<T extends Buffer> {
 		public final void alpha(int value) {
 			final int fval = value << 24;
 			applyActionINT((input, output, i) -> {
-				format.setPixel(output, i, (format.getARGB(input, i) & 0x00ffffff) | fval);
+				format.setARGB(output, i, (format.getARGB(input, i) & 0x00ffffff) | fval);
 			});
 		}
 		
@@ -418,7 +418,7 @@ public final class IImage<T extends Buffer> {
 			final float fval = clamp01(value);
 			applyActionINT((input, output, i) -> {
 				int alpha = (int) ((format.getARGB(input, i) >>> 24) * fval) << 24;
-				format.setPixel(output, i, (format.getARGB(input, i) & 0x00ffffff) | alpha);
+				format.setARGB(output, i, (format.getARGB(input, i) & 0x00ffffff) | alpha);
 			});
 		}
 		
@@ -472,7 +472,7 @@ public final class IImage<T extends Buffer> {
 		public final void thresholdLWR(int value) {
 			final int fval = clamp02(value);
 			applyActionINT((input, output, i) -> {
-				format.setPixel(output, i, (format.getARGB(input, i) & 0xff) <= fval ? 0xffffffff : 0xff000000);
+				format.setARGB(output, i, (format.getARGB(input, i) & 0xff) <= fval ? 0xffffffff : 0xff000000);
 			});
 		}
 		
@@ -484,7 +484,7 @@ public final class IImage<T extends Buffer> {
 		public final void thresholdGRT(int value) {
 			final int fval = clamp02(value);
 			applyActionINT((input, output, i) -> {
-				format.setPixel(output, i, (format.getARGB(input, i) & 0xff) >= fval ? 0xffffffff : 0xff000000);
+				format.setARGB(output, i, (format.getARGB(input, i) & 0xff) >= fval ? 0xffffffff : 0xff000000);
 			});
 		}
 		
@@ -500,7 +500,7 @@ public final class IImage<T extends Buffer> {
 			final int fmax = clamp02(max);
 			applyActionINT((input, output, i) -> {
 				int value = format.getARGB(input, i) & 0xff;
-				format.setPixel(output, i, value >= fmin && value <= fmax ? 0xffffffff : 0xff000000);
+				format.setARGB(output, i, value >= fmin && value <= fmax ? 0xffffffff : 0xff000000);
 			});
 		}
 		
@@ -572,11 +572,11 @@ public final class IImage<T extends Buffer> {
 		public final void boxBlur(int value, boolean premultiply) {
 			if((premultiply)) {
 				applyActionINT(pixels, buffer, (input, output, index) -> {
-					format.setPixel(output, index, Colors.Conversion.linear2premult(format.getARGB(input, index)));
+					format.setARGB(output, index, Colors.Conversion.linear2premult(format.getARGB(input, index)));
 				});
 				FastBlur.boxBlur(buffer, pixels, 0, 0, width, height, value, width, channels);
 				applyActionINT(pixels, buffer, (input, output, index) -> {
-					format.setPixel(output, index, Colors.Conversion.premult2linear(format.getARGB(input, index)));
+					format.setARGB(output, index, Colors.Conversion.premult2linear(format.getARGB(input, index)));
 				});
 				swapBuffer();
 			} else {
@@ -599,11 +599,11 @@ public final class IImage<T extends Buffer> {
 		public final void gaussianBlur(int value, boolean premultiply) {
 			if((premultiply)) {
 				applyActionINT(pixels, buffer, (input, output, index) -> {
-					format.setPixel(output, index, Colors.Conversion.linear2premult(format.getARGB(input, index)));
+					format.setARGB(output, index, Colors.Conversion.linear2premult(format.getARGB(input, index)));
 				});
 				FastBlur.gaussianBlur(buffer, pixels, 0, 0, width, height, value, width, channels);
 				applyActionINT(pixels, buffer, (input, output, index) -> {
-					format.setPixel(output, index, Colors.Conversion.premult2linear(format.getARGB(input, index)));
+					format.setARGB(output, index, Colors.Conversion.premult2linear(format.getARGB(input, index)));
 				});
 				swapBuffer();
 			} else {
@@ -858,7 +858,7 @@ public final class IImage<T extends Buffer> {
 					// The Sobel value from normalized magnitude and direction
 					mag = FastMath.sqrt(gx * gx + gy * gy);
 					dir = FastMath.atan2(gy, gx);
-					format.setPixel(output, i * epp, Colors.sobel(dir, mag / maxMag));
+					format.setARGB(output, i * epp, Colors.sobel(dir, mag / maxMag));
 					++i;
 					if((--x == 0)) {
 						x  = rw;
@@ -896,7 +896,7 @@ public final class IImage<T extends Buffer> {
 				if((x >= 0 && x < width) && (y >= 0 && y < height)) {
 					if((format.getARGB(pixels, i * epp) >>> 24) != 0x0) {
 						int p = (int) y * width + (int) x;
-						format.setPixel(output, p * epp, color);
+						format.setARGB(output, p * epp, color);
 					}
 				}
 				++x;
@@ -909,7 +909,7 @@ public final class IImage<T extends Buffer> {
 			// Combine the image's pixels and the shadow's pixels (with blending)
 			for(int i = 0, l = pixels.capacity(), c; i < l; i += epp) {
 				if((c = format.getARGB(output, i)) != 0x0) {
-					format.setPixel(pixels, i, Colors.blend(format.getARGB(pixels, i), c));
+					format.setARGB(pixels, i, Colors.blend(format.getARGB(pixels, i), c));
 				}
 			}
 			output = null;
@@ -1336,7 +1336,7 @@ public final class IImage<T extends Buffer> {
 	 * @param matrix The matrix*/
 	public final void applyRGBAMatrix(Matrix4f matrix) {
 		applyActionRGB((rgb, input, output, i) -> {
-			format.setPixel(output, i, matrixMultiplyRGBA(matrix, rgb[0], rgb[1], rgb[2], rgb[3]));
+			format.setARGB(output, i, matrixMultiplyRGBA(matrix, rgb[0], rgb[1], rgb[2], rgb[3]));
 		});
 	}
 	
@@ -1345,7 +1345,7 @@ public final class IImage<T extends Buffer> {
 	 * @param matrix The matrix*/
 	public final void applyHSLAMatrix(Matrix4f matrix) {
 		applyActionHSL((hsl, input, output, i) -> {
-			format.setPixel(output, i, matrixMultiplyHSLA(matrix, hsl[0], hsl[1], hsl[2], hsl[3]));
+			format.setARGB(output, i, matrixMultiplyHSLA(matrix, hsl[0], hsl[1], hsl[2], hsl[3]));
 		});
 	}
 	
@@ -1354,7 +1354,7 @@ public final class IImage<T extends Buffer> {
 	 * @param mask The mask*/
 	public final void applyMask(int mask) {
 		applyActionINT((input, output, i) -> {
-			format.setPixel(output, i, format.getARGB(input, i) & mask);
+			format.setARGB(output, i, format.getARGB(input, i) & mask);
 		});
 	}
 	
@@ -1428,7 +1428,7 @@ public final class IImage<T extends Buffer> {
 	 * Converts all the pixels of {@code this} image to premultiplied version.*/
 	public final void toPremultipliedAlpha() {
 		applyActionINT((input, output, index) -> {
-			format.setPixel(output, index, Colors.Conversion.linear2premult(format.getARGB(input, index)));
+			format.setARGB(output, index, Colors.Conversion.linear2premult(format.getARGB(input, index)));
 		});
 	}
 	
@@ -1436,7 +1436,7 @@ public final class IImage<T extends Buffer> {
 	 * Converts all the pixels of {@code this} image to linear version.*/
 	public final void toLinearAlpha() {
 		applyActionINT((input, output, index) -> {
-			format.setPixel(output, index, Colors.Conversion.premult2linear(format.getARGB(input, index)));
+			format.setARGB(output, index, Colors.Conversion.premult2linear(format.getARGB(input, index)));
 		});
 	}
 	
@@ -1532,7 +1532,7 @@ public final class IImage<T extends Buffer> {
 	 * @param index The index
 	 * @param argb The color, as an ARGB int*/
 	public final void setPixel(int index, int argb) {
-		format.setPixel(pixels, index * format.getElementsPerPixel(), argb);
+		format.setARGB(pixels, index * format.getElementsPerPixel(), argb);
 	}
 	
 	/**

@@ -320,7 +320,7 @@ public final class ImageUtils {
 		int rx = (srcw % dstw);
 		int epp = format.getElementsPerPixel();
 		for(int i = 0, k = 0, x = dstw, y = dsth, ex = 0, ey = 0;;) {
-			format.setPixel(dst, k * epp, src, i * epp);
+			format.set(dst, k * epp, src, i * epp);
 			i += dx;
 			k++;
 			if((ex += rx) >= dstw) {
@@ -404,9 +404,9 @@ public final class ImageUtils {
 			ni        = iny * nwidth + inx;
 			c         = ni+1;
 			r         = ni+nwidth;
-			if((ni    < length))                format.setPixel(buffer, ni * epp, color);
-			if((inx+1 < nwidth  && c < length)) format.setPixel(buffer, c  * epp, color);
-			if((iny+1 < nheight && r < length)) format.setPixel(buffer, r  * epp, color);
+			if((ni    < length))                format.setARGB(buffer, ni * epp, color);
+			if((inx+1 < nwidth  && c < length)) format.setARGB(buffer, c  * epp, color);
+			if((iny+1 < nheight && r < length)) format.setARGB(buffer, r  * epp, color);
 			nx+=cos;
 			ny+=sin;
 			if((++x == width)) {
@@ -773,8 +773,8 @@ public final class ImageUtils {
 				a = width - m,
 				b = width + m, x = m, y = height, t;;) {
 			t = format.getARGB(pixels, i * epp);
-			format.setPixel(pixels, i * epp, pixels, k * epp);
-			format.setPixel(pixels, k * epp, t);
+			format.set(pixels, i * epp, pixels, k * epp);
+			format.setARGB(pixels, k * epp, t);
 			++i; --k;
 			if((--x == 0)) {
 				x = m;
@@ -822,7 +822,7 @@ public final class ImageUtils {
 		T copy = BufferUtils.copy(pixels, format);
 		int epp = format.getElementsPerPixel();
 		for(int x = width, y = height, i = 0, l = pixels.capacity() / epp, k = l - height, a = l + 1;;) {
-			format.setPixel(pixels, k * epp, copy, i * epp);
+			format.set(pixels, k * epp, copy, i * epp);
 			++i;
 			k -= height;
 			if((--x == 0)) {
@@ -847,7 +847,7 @@ public final class ImageUtils {
 		T copy = BufferUtils.copy(pixels, format);
 		int epp = format.getElementsPerPixel();
 		for(int x = width, y = height, i = 0, l = pixels.capacity() / epp, k = height - 1, a = -l - 1;;) {
-			format.setPixel(pixels, k * epp, copy, i * epp);
+			format.set(pixels, k * epp, copy, i * epp);
 			++i;
 			k += height;
 			if((--x == 0)) {
@@ -946,7 +946,7 @@ public final class ImageUtils {
 		for(int i = 0, l = foreground.capacity(); i < l; i += epp) {
 			// Always blend both colors, no conditions should be here,
 			// internal checks are done in the blend method itself.
-			format.setPixel(result, i, Colors.blend(format.getARGB(foreground, i),
+			format.setARGB(result, i, Colors.blend(format.getARGB(foreground, i),
 			                                        format.getARGB(background, i)));
 		}
 	}
