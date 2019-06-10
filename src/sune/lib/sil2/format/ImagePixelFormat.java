@@ -1,7 +1,6 @@
 package sune.lib.sil2.format;
 
 import java.nio.Buffer;
-import java.nio.IntBuffer;
 
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritablePixelFormat;
@@ -17,8 +16,7 @@ public interface ImagePixelFormat<T extends Buffer> {
 	PixelFormat<T> getWriteFormat();
 	
 	T newBuffer(int length);
-	IntBuffer toIntBuffer(T buffer);
-	T fromIntBuffer(IntBuffer buffer);
+	T toValidBuffer(Buffer buffer);
 	
 	void set(T dst, int i, int value);
 	void set(T dst, int i, T src, int k);
@@ -35,8 +33,5 @@ public interface ImagePixelFormat<T extends Buffer> {
 	int getARGBPre(T src, int i);
 	
 	int getElementsPerPixel();
-	
-	T toValidBuffer(Buffer buffer);
-	
 	boolean isPremultiplied();
 }

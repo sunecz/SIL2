@@ -52,16 +52,6 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 	}
 	
 	@Override
-	public IntBuffer toIntBuffer(ByteBuffer buffer) {
-		return buffer.asIntBuffer();
-	}
-	
-	@Override
-	public ByteBuffer fromIntBuffer(IntBuffer buffer) {
-		return BufferUtils.intBuffer2byteBuffer(buffer);
-	}
-	
-	@Override
 	public ByteBuffer toValidBuffer(Buffer buffer) {
 		if((buffer instanceof ByteBuffer))
 			return (ByteBuffer) buffer;

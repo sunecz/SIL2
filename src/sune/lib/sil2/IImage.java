@@ -570,19 +570,8 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value
 		 * @param premultiply If {@code true}, the pixels are premultiplied*/
 		public final void boxBlur(int value, boolean premultiply) {
-			if((premultiply)) {
-				applyActionINT(pixels, buffer, (input, output, index) -> {
-					format.setARGB(output, index, Colors.Conversion.linear2premult(format.getARGB(input, index)));
-				});
-				FastBlur.boxBlur(buffer, pixels, 0, 0, width, height, value, width, channels);
-				applyActionINT(pixels, buffer, (input, output, index) -> {
-					format.setARGB(output, index, Colors.Conversion.premult2linear(format.getARGB(input, index)));
-				});
-				swapBuffer();
-			} else {
-				FastBlur.boxBlur(pixels, buffer, 0, 0, width, height, value, width, channels);
-				swapBuffer();
-			}
+			FastBlur.boxBlur(pixels, buffer, 0, 0, width, height, value, width, channels, premultiply);
+			swapBuffer();
 		}
 		
 		/**
@@ -597,19 +586,8 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value
 		 * @param premultiply If {@code true}, the pixels are premultiplied*/
 		public final void gaussianBlur(int value, boolean premultiply) {
-			if((premultiply)) {
-				applyActionINT(pixels, buffer, (input, output, index) -> {
-					format.setARGB(output, index, Colors.Conversion.linear2premult(format.getARGB(input, index)));
-				});
-				FastBlur.gaussianBlur(buffer, pixels, 0, 0, width, height, value, width, channels);
-				applyActionINT(pixels, buffer, (input, output, index) -> {
-					format.setARGB(output, index, Colors.Conversion.premult2linear(format.getARGB(input, index)));
-				});
-				swapBuffer();
-			} else {
-				FastBlur.gaussianBlur(pixels, buffer, 0, 0, width, height, value, width, channels);
-				swapBuffer();
-			}
+			FastBlur.gaussianBlur(pixels, buffer, 0, 0, width, height, value, width, channels, premultiply);
+			swapBuffer();
 		}
 		
 		/**
@@ -962,7 +940,7 @@ public final class IImage<T extends Buffer> {
 	private static final class FastBlur {
 		
 		public static final <T extends Buffer> void gaussianBlur(T input, T output, int x, int y, int w, int h, int r, int s,
-				InternalChannels<T> channels) {
+				InternalChannels<T> channels, boolean premultiply) {
 			final CounterLock lock   = new CounterLock(4);
 			final int         length = input.capacity();
 			final float[]     boxes  = generateBoxes(r, 3);
@@ -972,34 +950,34 @@ public final class IImage<T extends Buffer> {
 			byte[] outputA = new byte[length];
 			Threads.execute(() -> {
 				byte[] inputR = new byte[length];
-				channels.separate(input, inputR, channels.getFormat().getShiftR());
+				channels.separate(input, inputR, channels.getFormat().getShiftR(), premultiply);
 				gaussianBlur(inputR, outputR, x, y, w, h, r, s, boxes);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputG = new byte[length];
-				channels.separate(input, inputG, channels.getFormat().getShiftG());
+				channels.separate(input, inputG, channels.getFormat().getShiftG(), premultiply);
 				gaussianBlur(inputG, outputG, x, y, w, h, r, s, boxes);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputB = new byte[length];
-				channels.separate(input, inputB, channels.getFormat().getShiftB());
+				channels.separate(input, inputB, channels.getFormat().getShiftB(), premultiply);
 				gaussianBlur(inputB, outputB, x, y, w, h, r, s, boxes);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputA = new byte[length];
-				channels.separate(input, inputA, channels.getFormat().getShiftA());
+				channels.separate(input, inputA, channels.getFormat().getShiftA(), premultiply);
 				gaussianBlur(inputA, outputA, x, y, w, h, r, s, boxes);
 				lock.decrement();
 			});
 			lock.await();
-			channels.join(outputR, outputG, outputB, outputA, output);
+			channels.join(outputR, outputG, outputB, outputA, output, premultiply);
 		}
 		
 		public static final <T extends Buffer> void boxBlur(T input, T output, int x, int y, int w, int h, int r, int s,
-				InternalChannels<T> channels) {
+				InternalChannels<T> channels, boolean premultiply) {
 			final CounterLock lock   = new CounterLock(4);
 			final int         length = input.capacity();
 			byte[] outputR = new byte[length];
@@ -1008,30 +986,30 @@ public final class IImage<T extends Buffer> {
 			byte[] outputA = new byte[length];
 			Threads.execute(() -> {
 				byte[] inputR = new byte[length];
-				channels.separate(input, inputR, channels.getFormat().getShiftR());
+				channels.separate(input, inputR, channels.getFormat().getShiftR(), premultiply);
 				boxBlur(inputR, outputR, 0, 0, w, h, r, s);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputG = new byte[length];
-				channels.separate(input, inputG, channels.getFormat().getShiftG());
+				channels.separate(input, inputG, channels.getFormat().getShiftG(), premultiply);
 				boxBlur(inputG, outputG, 0, 0, w, h, r, s);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputB = new byte[length];
-				channels.separate(input, inputB, channels.getFormat().getShiftB());
+				channels.separate(input, inputB, channels.getFormat().getShiftB(), premultiply);
 				boxBlur(inputB, outputB, 0, 0, w, h, r, s);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputA = new byte[length];
-				channels.separate(input, inputA, channels.getFormat().getShiftA());
+				channels.separate(input, inputA, channels.getFormat().getShiftA(), premultiply);
 				boxBlur(inputA, outputA, 0, 0, w, h, r, s);
 				lock.decrement();
 			});
 			lock.await();
-			channels.join(outputR, outputG, outputB, outputA, output);
+			channels.join(outputR, outputG, outputB, outputA, output, premultiply);
 		}
 		
 		private static final float[] generateBoxes(int sigma, int amount) {
@@ -1428,7 +1406,7 @@ public final class IImage<T extends Buffer> {
 	 * Converts all the pixels of {@code this} image to premultiplied version.*/
 	public final void toPremultipliedAlpha() {
 		applyActionINT((input, output, index) -> {
-			format.setARGB(output, index, Colors.Conversion.linear2premult(format.getARGB(input, index)));
+			format.setARGB(output, index, Colors.linear2premult(format.getARGB(input, index)));
 		});
 	}
 	
@@ -1436,7 +1414,7 @@ public final class IImage<T extends Buffer> {
 	 * Converts all the pixels of {@code this} image to linear version.*/
 	public final void toLinearAlpha() {
 		applyActionINT((input, output, index) -> {
-			format.setARGB(output, index, Colors.Conversion.premult2linear(format.getARGB(input, index)));
+			format.setARGB(output, index, Colors.premult2linear(format.getARGB(input, index)));
 		});
 	}
 	
