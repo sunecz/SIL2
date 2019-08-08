@@ -2,7 +2,7 @@ package sune.lib.sil2.format;
 
 import sune.lib.sil2.FastMath;
 
-public final class ImagePixelFormatUtils {
+final class ImagePixelFormatUtils {
 	
 	// Forbid anyone to create an instance of this class
 	private ImagePixelFormatUtils() {

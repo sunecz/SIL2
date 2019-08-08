@@ -1,18 +1,18 @@
 package sune.lib.sil2.format;
 
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritablePixelFormat;
-import sune.lib.sil2.BufferUtils;
 
 public final class BGRAPreImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 	
 	private static final int ELEMENTS_PER_PIXEL = 4;
 	
-	BGRAPreImagePixelFormat() {
+	public static final BGRAPreImagePixelFormat INSTANCE = new BGRAPreImagePixelFormat();
+	
+	// Forbid anyone to create an instance of this class
+	private BGRAPreImagePixelFormat() {
 	}
 	
 	@Override
@@ -48,17 +48,6 @@ public final class BGRAPreImagePixelFormat implements ImagePixelFormat<ByteBuffe
 	@Override
 	public ByteBuffer newBuffer(int length) {
 		return ByteBuffer.allocate(length * ELEMENTS_PER_PIXEL);
-	}
-	
-	@Override
-	public ByteBuffer toValidBuffer(Buffer buffer) {
-		if((buffer instanceof ByteBuffer))
-			return (ByteBuffer) buffer;
-		if((buffer instanceof IntBuffer)) {
-			return BufferUtils.intBuffer2byteBuffer((IntBuffer) buffer);
-		}
-		throw new UnsupportedOperationException
-			("Unable to convert buffer (" + buffer + ") to a valid buffer for this format.");
 	}
 	
 	@Override
@@ -106,6 +95,14 @@ public final class BGRAPreImagePixelFormat implements ImagePixelFormat<ByteBuffe
 	}
 	
 	@Override
+	public void setARGB(ByteBuffer dst, int i, ByteBuffer src, int k) {
+		dst.put(i,     src.get(k    ));
+		dst.put(i + 1, src.get(k + 1));
+		dst.put(i + 2, src.get(k + 2));
+		dst.put(i + 3, src.get(k + 3));
+	}
+	
+	@Override
 	public int get(ByteBuffer src, int i) {
 		return src.get(i) & 0xff;
 	}
@@ -130,7 +127,7 @@ public final class BGRAPreImagePixelFormat implements ImagePixelFormat<ByteBuffe
 	
 	@Override
 	public int getElementsPerPixel() {
-		return 4;
+		return ELEMENTS_PER_PIXEL;
 	}
 	
 	@Override

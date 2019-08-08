@@ -16,7 +16,6 @@ public interface ImagePixelFormat<T extends Buffer> {
 	PixelFormat<T> getWriteFormat();
 	
 	T newBuffer(int length);
-	T toValidBuffer(Buffer buffer);
 	
 	void set(T dst, int i, int value);
 	void set(T dst, int i, T src, int k);
@@ -26,6 +25,7 @@ public interface ImagePixelFormat<T extends Buffer> {
 	
 	void setARGB(T dst, int i, int argb);
 	void setARGBPre(T dst, int i, int argb);
+	void setARGB(T dst, int i, T src, int k);
 	
 	int get(T src, int i);
 	

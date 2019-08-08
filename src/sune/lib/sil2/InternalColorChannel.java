@@ -1,5 +1,7 @@
 package sune.lib.sil2;
 
+import java.util.Arrays;
+
 import sune.lib.sil2.format.ImagePixelFormat;
 
 /**
@@ -9,26 +11,24 @@ final class InternalColorChannel {
 	private final int shift;
 	private final int mask;
 	
-	private InternalColorChannel(int shift, int mask) {
+	private InternalColorChannel(int shift) {
 		this.shift = shift;
-		this.mask  = mask;
+		this.mask  = 0xff << shift;
 	}
 	
 	public static final InternalColorChannel from(ImagePixelFormat<?> format, ColorChannel channel) {
 		switch(channel) {
-			case RED:   return new InternalColorChannel(format.getShiftR(), 0xff << format.getShiftR());
-			case GREEN: return new InternalColorChannel(format.getShiftG(), 0xff << format.getShiftG());
-			case BLUE:  return new InternalColorChannel(format.getShiftB(), 0xff << format.getShiftB());
-			case ALPHA: return new InternalColorChannel(format.getShiftA(), 0xff << format.getShiftA());
+			case RED:   return new InternalColorChannel(format.getShiftR());
+			case GREEN: return new InternalColorChannel(format.getShiftG());
+			case BLUE:  return new InternalColorChannel(format.getShiftB());
+			case ALPHA: return new InternalColorChannel(format.getShiftA());
 			default:
 				throw new UnsupportedOperationException("Unsupported color channel: " + channel);
 		}
 	}
 	
 	public static final InternalColorChannel[] fromMany(ImagePixelFormat<?> format, ColorChannel... channels) {
-		InternalColorChannel[] array = new InternalColorChannel[channels.length];
-		for(int i = 0, l = channels.length; i < l; ++i) array[i] = from(format, channels[i]);
-		return array;
+		return Arrays.asList(channels).parallelStream().map((c) -> from(format, c)).toArray(InternalColorChannel[]::new);
 	}
 	
 	public final int getShift() {

@@ -49,13 +49,18 @@ package sune.lib.sil2;
  * ceil:
  * <a href="http://www.java-gaming.org/index.php?topic=24194.0">
  *     http://www.java-gaming.org/index.php?topic=24194.0
+ * </a><br>
+ * getExponent, abs, scalb, hypot:
+ * <a href="https://github.com/apache/commons-math/blob/master/src/main/java/org/apache/commons/math4/util/FastMath.java">
+ *     https://github.com/apache/commons-math/blob/master/src/main/java/org/apache/commons/math4/util/FastMath.java
  * </a>
  * @version 1.0.0
  * @author Riven
  * @author jMonkeyEngine
  * @author fishrock123
  * @author Martin Ankerl
- * @author Petr Cipra
+ * @author Apache
+ * @author Sune
  * @see Math*/
 public final class FastMath {
 	
@@ -146,7 +151,7 @@ public final class FastMath {
 		initTrig();
 	}
 	
-	// forbid anyone to create an instance of this class
+	// Forbid anyone to create an instance of this class
 	private FastMath() {
 	}
 	
@@ -381,5 +386,166 @@ public final class FastMath {
 	 * @return {@code val / 255}*/
 	public static final int div255(int val) {
 		return ((val + 1) + (val >> 8)) >> 8;
+	}
+	
+	/**
+     * Returns the unbiased exponent used in the representation of a
+     * {@code float}.  Special cases:
+     *
+     * <ul>
+     * <li>If the argument is NaN or infinite, then the result is
+     * {@link Float#MAX_EXPONENT} + 1.
+     * <li>If the argument is zero or subnormal, then the result is
+     * {@link Float#MIN_EXPONENT} -1.
+     * </ul>
+     * @param f a {@code float} value
+     * @return the unbiased exponent of the argument
+     * @see Math#getExponent(float)
+     */
+	public static final int getExponent(float f) {
+		// NaN and Infinite will return the same exponent anywho so can use raw bits
+		return ((Float.floatToRawIntBits(f) >>> 23) & 0xff) - 127;
+	}
+	
+	/**
+     * Returns the absolute value of a {@code float} value.
+     * If the argument is not negative, the argument is returned.
+     * If the argument is negative, the negation of the argument is returned.
+     * Special cases:
+     * <ul><li>If the argument is positive zero or negative zero, the
+     * result is positive zero.
+     * <li>If the argument is infinite, the result is positive infinity.
+     * <li>If the argument is NaN, the result is NaN.</ul>
+     *
+     * @apiNote As implied by the above, one valid implementation of
+     * this method is given by the expression below which computes a
+     * {@code float} with the same exponent and significand as the
+     * argument but with a guaranteed zero sign bit indicating a
+     * positive value:<br>
+     * {@code Float.intBitsToFloat(0x7fffffff & Float.floatToRawIntBits(a))}
+     *
+     * @param   a   the argument whose absolute value is to be determined
+     * @return  the absolute value of the argument.
+     * @see Math#abs(float)
+     */
+	public static final float abs(float x) {
+		return Float.intBitsToFloat(0x7fffffff & Float.floatToRawIntBits(x));
+	}
+	
+	/**
+     * Returns {@code f} &times;
+     * 2<sup>{@code scaleFactor}</sup> rounded as if performed
+     * by a single correctly rounded floating-point multiply to a
+     * member of the float value set.  See the Java
+     * Language Specification for a discussion of floating-point
+     * value sets.  If the exponent of the result is between {@link
+     * Float#MIN_EXPONENT} and {@link Float#MAX_EXPONENT}, the
+     * answer is calculated exactly.  If the exponent of the result
+     * would be larger than {@code Float.MAX_EXPONENT}, an
+     * infinity is returned.  Note that if the result is subnormal,
+     * precision may be lost; that is, when {@code scalb(x, n)}
+     * is subnormal, {@code scalb(scalb(x, n), -n)} may not equal
+     * <i>x</i>.  When the result is non-NaN, the result has the same
+     * sign as {@code f}.
+     *
+     * <p>Special cases:
+     * <ul>
+     * <li> If the first argument is NaN, NaN is returned.
+     * <li> If the first argument is infinite, then an infinity of the
+     * same sign is returned.
+     * <li> If the first argument is zero, then a zero of the same
+     * sign is returned.
+     * </ul>
+     *
+     * @param f number to be scaled by a power of two.
+     * @param scaleFactor power of 2 used to scale {@code f}
+     * @return {@code f} &times; 2<sup>{@code scaleFactor}</sup>
+     * @see Math#scalb(float, int)
+     */
+	public static final float scalb(float f, int n) {
+		if((n > -127) && (n < 128))
+			return f * Float.intBitsToFloat((n + 127) << 23);
+		if((Float.isNaN(f) || Float.isInfinite(f) || (f == 0.0f)))
+			return f;
+		if((n < -277))
+			return (f > 0) ? 0.0f : -0.0f;
+		if((n > 276))
+			return (f > 0) ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY;
+		final int bits = Float.floatToIntBits(f);
+		final int sign = bits & 0x80000000;
+		int exponent   = (bits >>> 23) & 0xff;
+		int mantissa   = bits & 0x007fffff;
+		int scaledExponent = exponent + n;
+		if((n < 0)) {
+			if((scaledExponent > 0))
+				return Float.intBitsToFloat(sign | (scaledExponent << 23) | mantissa);
+			if((scaledExponent > -24)) {
+				mantissa |= 1 << 23;
+				final int mostSignificantLostBit = mantissa & (1 << (-scaledExponent));
+				mantissa >>>= 1 - scaledExponent;
+				if((mostSignificantLostBit != 0)) 
+					mantissa++;
+				return Float.intBitsToFloat(sign | mantissa);
+			}
+			return (sign == 0) ? 0.0f : -0.0f;
+		}
+		if((exponent == 0)) {
+			while((mantissa >>> 23) != 1) {
+				mantissa <<= 1;
+				--scaledExponent;
+			}
+			++scaledExponent;
+			mantissa &= 0x007fffff;
+			if((scaledExponent < 255)) {
+				return Float.intBitsToFloat(sign | (scaledExponent << 23) | mantissa);
+            }
+			return (sign == 0) ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY;
+        }
+		if((scaledExponent < 255))
+			return Float.intBitsToFloat(sign | (scaledExponent << 23) | mantissa);
+		return (sign == 0) ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY;
+	}
+	
+	/**
+     * Returns sqrt(<i>x</i><sup>2</sup>&nbsp;+<i>y</i><sup>2</sup>)
+     * without intermediate overflow or underflow.
+     *
+     * <p>Special cases:
+     * <ul>
+     *
+     * <li> If either argument is infinite, then the result
+     * is positive infinity.
+     *
+     * <li> If either argument is NaN and neither argument is infinite,
+     * then the result is NaN.
+     *
+     * </ul>
+     *
+     * <p>The computed result must be within 1 ulp of the exact
+     * result.  If one parameter is held constant, the results must be
+     * semi-monotonic in the other parameter.
+     *
+     * @param x a value
+     * @param y a value
+     * @return sqrt(<i>x</i><sup>2</sup>&nbsp;+<i>y</i><sup>2</sup>)
+     * without intermediate overflow or underflow
+     * @see Math#hypot(double, double)
+     */
+	public static final float hypot(float x, float y) {
+		if((Float.isInfinite(x) || Float.isInfinite(y)))
+			return Float.POSITIVE_INFINITY;
+		if((Float.isNaN(x) || Float.isNaN(y)))
+			return Float.NaN;
+		final int expX = getExponent(x);
+		final int expY = getExponent(y);
+		if((expX > expY + 27))
+			return abs(x);
+		if((expY > expX + 27))
+			return abs(y);
+		final int middleExp = (expX + expY) / 2;
+		final float scaledX = scalb(x, -middleExp);
+		final float scaledY = scalb(y, -middleExp);
+		final float scaledH = sqrt(scaledX * scaledX + scaledY * scaledY);
+		return scalb(scaledH, middleExp);
 	}
 }

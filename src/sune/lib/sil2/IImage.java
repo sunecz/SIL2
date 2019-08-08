@@ -1,7 +1,6 @@
 package sune.lib.sil2;
 
 import java.nio.Buffer;
-import java.nio.IntBuffer;
 import java.util.Arrays;
 
 import javafx.scene.image.Image;
@@ -48,11 +47,11 @@ public final class IImage<T extends Buffer> {
 	 * Creates a new instance from the given image.
 	 * @param image The image*/
 	public IImage(Image image) {
-		this.image 	  = ImageUtils.toWritable(image);
+		this.image 	  = ensureWritableSupported(image);
 		this.width 	  = (int) this.image.getWidth();
 		this.height   = (int) this.image.getHeight();
 		this.wrapper  = FXInternalUtils.getPlatformImageWrapper(this.image);
-		this.format   = getImagePixelFormat(image);
+		this.format   = getImagePixelFormat(this.image);
 		this.original = getTypedWrapperBuffer(wrapper);
 		this.pixels   = newPixelsBuffer();
 		this.buffer   = newPixelsBuffer();
@@ -71,7 +70,7 @@ public final class IImage<T extends Buffer> {
 		this.image 	  = ImageUtils.create(width, height, imagePixels);
 		this.width 	  = width;
 		this.height   = height;
-		this.wrapper  = FXInternalUtils.getPlatformImageWrapper(this.image);
+		this.wrapper  = FXInternalUtils.getPlatformImageWrapper(image);
 		this.format   = getImagePixelFormat(image);
 		this.original = getTypedWrapperBuffer(wrapper);
 		this.pixels   = newPixelsBuffer();
@@ -79,6 +78,15 @@ public final class IImage<T extends Buffer> {
 		this.channels = new InternalChannels<>(format);
 		BufferUtils.buffercopy(original, pixels);
 		BufferUtils.buffercopy(original, buffer);
+	}
+	
+	private static final WritableImage ensureWritableSupported(Image image) {
+		// If the image's format is not supported, convert it to a native image
+		if(!ImagePixelFormats.isSupported(image.getPixelReader().getPixelFormat())) {
+			image = NativeImage.ensurePixelFormat(image);
+		}
+		// Ensure that the image is writable
+		return ImageUtils.toWritable(image);
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -450,8 +458,15 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void lightness(float value) {
 			final float fval = clamp00(value);
-			applyActionHSL((hsl, input, output, index) -> {
-				hsl[2] *= fval;
+			applyActionHCL((hcl, input, output, index) -> {
+				hcl[2] *= fval;
+			});
+		}
+		
+		public final void chroma(float value) {
+			final float fval = clamp00(value);
+			applyActionHCL((hcl, input, output, index) -> {
+				hcl[1] *= fval;
 			});
 		}
 		
@@ -506,7 +521,7 @@ public final class IImage<T extends Buffer> {
 		
 		/**
 		 * Thresholds {@code this} image using the {@linkplain #thresholdGRT(int)}
-		 * method with a value of {@linkplain IImage#optimalThreshold(IntBuffer, int)}
+		 * method with a value of {@linkplain IImage#optimalThreshold(int[], int)}
 		 * method and {@code this} image's histogram.*/
 		public final void histogramThreshold() {
 			grayscale();
@@ -821,15 +836,12 @@ public final class IImage<T extends Buffer> {
 		/**
 		 * Applies sobel filter to {@code this} image.*/
 		public final void sobel() {
-			final float maxMag = 1442.5f;
 			int epp = format.getElementsPerPixel();
 			// Precompute the grayscale values of the pixels
-			T gray = newPixelsBuffer();
-			for(int i = 0, l = pixels.capacity(); i < l; i += epp)
-				format.set(gray, i, Colors.grayscale(format.getARGB(pixels, i)));
+			for(int i = 0, l = buffer.capacity(); i < l; i += epp)
+				format.set(buffer, i, Colors.grayscale(format.getARGB(buffer, i)));
 			// Do the actual Sobel filtering
-			jobs.area(1, 1, width - 1, height - 1, gray, buffer, (rx, ry, rw, rh, input, stride, output) -> {
-				float mag, dir;
+			jobs.area(1, 1, width - 1, height - 1, buffer, pixels, (rx, ry, rw, rh, input, stride, output) -> {
 				for(int i = ry * stride + rx, ii = stride - rw, x = rw, y = rh, gx, gy;;) {
 					// Sobel x-kernel and y-kernel pass
 					gx = -2 * format.get(input, (i - 1) * epp)
@@ -845,9 +857,7 @@ public final class IImage<T extends Buffer> {
 						 -1 * format.get(input, (i - stride + 1) * epp)
 						 +1 * format.get(input, (i + stride + 1) * epp);
 					// The Sobel value from normalized magnitude and direction
-					mag = FastMath.sqrt(gx * gx + gy * gy);
-					dir = FastMath.atan2(gy, gx);
-					format.setARGB(output, i * epp, Colors.sobel(dir, mag / maxMag));
+					format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
 					++i;
 					if((--x == 0)) {
 						x  = rw;
@@ -857,8 +867,112 @@ public final class IImage<T extends Buffer> {
 					}
 				}
 			});
-			swapBuffer();
-			gray = null;
+			/* Use copy method around the edges, i.e. the pixels are "copied"
+			 * so that they are outside of the images and act like they were
+			 * there all along. This is only done virtually, no pixels are
+			 * actually being copied.*/
+			// Top line
+			jobs.lineH(0, 0, width, buffer, pixels, (i, x, y, input, stride, output) -> {
+				int gx, gy;
+				// Sobel x-kernel and y-kernel pass
+				gx = 0;
+				gy = -2 * format.get(input, (i) * epp)
+					 +2 * format.get(input, (i + stride) * epp);
+				if((x == 0)) {
+					gx += -3 * format.get(input, (i) * epp)
+						  -1 * format.get(input, (i + stride) * epp);
+					gy += -1 * format.get(input, (i) * epp)
+						  +1 * format.get(input, (i + stride) * epp);
+				} else {
+					gx += -3 * format.get(input, (i - 1) * epp)
+						  -1 * format.get(input, (i + stride - 1) * epp);
+					gy += -1 * format.get(input, (i - 1) * epp)
+						  +1 * format.get(input, (i + stride - 1) * epp);
+				}
+				if((x == width - 1)) {
+					gx += +3 * format.get(input, (i) * epp)
+						  +1 * format.get(input, (i + stride) * epp);
+					gy += -1 * format.get(input, (i) * epp)
+						  +1 * format.get(input, (i + stride) * epp);
+				} else {
+					gx += +3 * format.get(input, (i + 1) * epp)
+						  +1 * format.get(input, (i + stride + 1) * epp);
+					gy += -1 * format.get(input, (i + 1) * epp)
+						  +1 * format.get(input, (i + stride + 1) * epp);
+				}
+				// The Sobel value from normalized magnitude and direction
+				format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
+			});
+			// Bottom line
+			jobs.lineH(0, height - 1, width, buffer, pixels, (i, x, y, input, stride, output) -> {
+				int gx, gy;
+				// Sobel x-kernel and y-kernel pass
+				gx = 0;
+				gy = -2 * format.get(input, (i - stride) * epp)
+					 +2 * format.get(input, (i) * epp);
+				if((x == 0)) {
+					gx += -3 * format.get(input, (i) * epp)
+						  -1 * format.get(input, (i - stride) * epp);
+					gy += -1 * format.get(input, (i - stride) * epp)
+						  +1 * format.get(input, (i) * epp);
+				} else {
+					gx += -3 * format.get(input, (i - 1) * epp)
+						  -1 * format.get(input, (i - stride - 1) * epp);
+					gy += -1 * format.get(input, (i - stride - 1) * epp)
+						  +1 * format.get(input, (i - 1) * epp);
+				}
+				if((x == width - 1)) {
+					gx += +3 * format.get(input, (i) * epp)
+						  +1 * format.get(input, (i - stride) * epp);
+					gy += -1 * format.get(input, (i - stride) * epp)
+						  +1 * format.get(input, (i) * epp);
+				} else {
+					gx += +3 * format.get(input, (i + 1) * epp)
+						  +1 * format.get(input, (i - stride + 1) * epp);
+					gy += -1 * format.get(input, (i - stride + 1) * epp)
+						  +1 * format.get(input, (i + 1) * epp);
+				}
+				// The Sobel value from normalized magnitude and direction
+				format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
+			});
+			// Left line
+			jobs.lineV(0, 1, height - 2, buffer, pixels, (i, x, y, input, stride, output) -> {
+				int gx, gy;
+				// Sobel x-kernel and y-kernel pass
+				gx = -2 * format.get(input, (i) * epp)
+					 -1 * format.get(input, (i - stride) * epp)
+					 -1 * format.get(input, (i + stride) * epp)
+					 +2 * format.get(input, (i + 1) * epp)
+					 +1 * format.get(input, (i - stride + 1) * epp)
+					 +1 * format.get(input, (i + stride + 1) * epp);
+				gy = -2 * format.get(input, (i - stride) * epp)
+					 -1 * format.get(input, (i - stride) * epp)
+					 +1 * format.get(input, (i + stride) * epp)
+					 +2 * format.get(input, (i + stride) * epp)
+					 -1 * format.get(input, (i - stride + 1) * epp)
+					 +1 * format.get(input, (i + stride + 1) * epp);
+				// The Sobel value from normalized magnitude and direction
+				format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
+			});
+			// Right line
+			jobs.lineV(width - 1, 1, height - 2, buffer, pixels, (i, x, y, input, stride, output) -> {
+				int gx, gy;
+				// Sobel x-kernel and y-kernel pass
+				gx = -2 * format.get(input, (i - 1) * epp)
+					 -1 * format.get(input, (i - stride - 1) * epp)
+					 -1 * format.get(input, (i + stride - 1) * epp)
+					 +2 * format.get(input, (i) * epp)
+					 +1 * format.get(input, (i - stride) * epp)
+					 +1 * format.get(input, (i + stride) * epp);
+				gy = -2 * format.get(input, (i - stride) * epp)
+					 -1 * format.get(input, (i - stride - 1) * epp)
+					 +1 * format.get(input, (i + stride - 1) * epp)
+					 +2 * format.get(input, (i + stride) * epp)
+					 -1 * format.get(input, (i - stride) * epp)
+					 +1 * format.get(input, (i + stride) * epp);
+				// The Sobel value from normalized magnitude and direction
+				format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
+			});
 		}
 	}
 	
@@ -875,39 +989,42 @@ public final class IImage<T extends Buffer> {
 		 * @param distY The y-coordinate of the distance
 		 * @param color The color*/
 		public final void shadow(float angle, float distX, float distY, int color) {
-			T output = newPixelsBuffer();
 			int epp = format.getElementsPerPixel();
+			BufferUtils.fill(buffer, 0x0, epp);
 			// Produce the image's shadow of transparency and store it in output
 			float dx = FastMath.cos(angle) * distX;
 			float dy = FastMath.sin(angle) * distY;
 			float x = dx, y = dy;
-			for(int i = 0, k = width, l = pixels.capacity() / epp; i < l; ++i) {
+			for(int i = 0, k = width, l = pixels.capacity(); i < l; i += epp) {
 				if((x >= 0 && x < width) && (y >= 0 && y < height)) {
-					if((format.getARGB(pixels, i * epp) >>> 24) != 0x0) {
-						int p = (int) y * width + (int) x;
-						format.setARGB(output, p * epp, color);
+					if((format.getARGB(pixels, i) >>> 24) != 0x0) {
+						format.setARGB(buffer, ((int) y * width + (int) x) * epp, color);
 					}
 				}
 				++x;
 				if((--k == 0)) {
 					 k = width;
 					 x = dx;
-					 ++y;
+					 if((++y >= height))
+						 break;
 				}
 			}
 			// Combine the image's pixels and the shadow's pixels (with blending)
-			for(int i = 0, l = pixels.capacity(), c; i < l; i += epp) {
-				if((c = format.getARGB(output, i)) != 0x0) {
-					format.setARGB(pixels, i, Colors.blend(format.getARGB(pixels, i), c));
-				}
+			for(int i = 0, l = pixels.capacity(); i < l; i += epp) {
+				format.setARGB(pixels, i, Colors.blend(format.getARGB(pixels, i),
+				                                       format.getARGB(buffer, i)));
 			}
-			output = null;
 		}
 	}
 	
 	@FunctionalInterface
 	private static interface Job<T extends Buffer> {
 		void execute(int rx, int ry, int rw, int rh, T input, int stride, T output);
+	}
+	
+	@FunctionalInterface
+	private static interface LineJob<T extends Buffer> {
+		void execute(int i, int x, int y, T input, int stride, T output);
 	}
 	
 	private final Jobs jobs = new Jobs();
@@ -935,6 +1052,18 @@ public final class IImage<T extends Buffer> {
 			}
 			lock.await();
 		}
+		
+		public final void lineH(int x, int y, int width, T input, T output, LineJob<T> job) {
+			for(int stride = IImage.this.width, sx = x, i = y * stride + x, kx = width; kx-- != 0; ++sx, ++i) {
+				job.execute(i, sx, y, input, stride, output);
+			}
+		}
+		
+		public final void lineV(int x, int y, int height, T input, T output, LineJob<T> job) {
+			for(int stride = IImage.this.width, sy = y, i = y * stride + x, ky = height; ky-- != 0; ++sy, i += stride) {
+				job.execute(i, x, sy, input, stride, output);
+			}
+		}
 	}
 	
 	/**
@@ -961,25 +1090,25 @@ public final class IImage<T extends Buffer> {
 			byte[] outputA = new byte[length];
 			Threads.execute(() -> {
 				byte[] inputR = new byte[length];
-				channels.separate(input, inputR, channels.getFormat().getShiftR(), premultiply);
+				channels.separate(input, inputR, channels.getFormat().getShiftR(), false);
 				gaussianBlur(inputR, outputR, x, y, w, h, r, s, boxes);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputG = new byte[length];
-				channels.separate(input, inputG, channels.getFormat().getShiftG(), premultiply);
+				channels.separate(input, inputG, channels.getFormat().getShiftG(), false);
 				gaussianBlur(inputG, outputG, x, y, w, h, r, s, boxes);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputB = new byte[length];
-				channels.separate(input, inputB, channels.getFormat().getShiftB(), premultiply);
+				channels.separate(input, inputB, channels.getFormat().getShiftB(), false);
 				gaussianBlur(inputB, outputB, x, y, w, h, r, s, boxes);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputA = new byte[length];
-				channels.separate(input, inputA, channels.getFormat().getShiftA(), premultiply);
+				channels.separate(input, inputA, channels.getFormat().getShiftA(), false);
 				gaussianBlur(inputA, outputA, x, y, w, h, r, s, boxes);
 				lock.decrement();
 			});
@@ -997,25 +1126,25 @@ public final class IImage<T extends Buffer> {
 			byte[] outputA = new byte[length];
 			Threads.execute(() -> {
 				byte[] inputR = new byte[length];
-				channels.separate(input, inputR, channels.getFormat().getShiftR(), premultiply);
+				channels.separate(input, inputR, channels.getFormat().getShiftR(), false);
 				boxBlur(inputR, outputR, 0, 0, w, h, r, s);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputG = new byte[length];
-				channels.separate(input, inputG, channels.getFormat().getShiftG(), premultiply);
+				channels.separate(input, inputG, channels.getFormat().getShiftG(), false);
 				boxBlur(inputG, outputG, 0, 0, w, h, r, s);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputB = new byte[length];
-				channels.separate(input, inputB, channels.getFormat().getShiftB(), premultiply);
+				channels.separate(input, inputB, channels.getFormat().getShiftB(), false);
 				boxBlur(inputB, outputB, 0, 0, w, h, r, s);
 				lock.decrement();
 			});
 			Threads.execute(() -> {
 				byte[] inputA = new byte[length];
-				channels.separate(input, inputA, channels.getFormat().getShiftA(), premultiply);
+				channels.separate(input, inputA, channels.getFormat().getShiftA(), false);
 				boxBlur(inputA, outputA, 0, 0, w, h, r, s);
 				lock.decrement();
 			});
@@ -1100,8 +1229,13 @@ public final class IImage<T extends Buffer> {
 	}
 	
 	@FunctionalInterface
-	private static interface ActionHSL<T extends Buffer> {
-		void action(float[] hsl, T input, T output, int index);
+	private static interface ActionFloat<T extends Buffer> {
+		void action(float[] arr, T input, T output, int index);
+	}
+	
+	@FunctionalInterface
+	private static interface ConversionAction<A, B> {
+		void convert(A a, B b);
 	}
 	
 	private static final float clamp01(float val) {
@@ -1131,7 +1265,78 @@ public final class IImage<T extends Buffer> {
 		return val <= min ? min : val >= max ? max : val;
 	}
 	
-	private final void applyActionINT(T input, T output, ActionINT<T> action) {
+	@FunctionalInterface
+	private static interface ThreadedAction<T> {
+		void action(int i, int epp, VariableStore varStore);
+	}
+	
+	private static interface VariableStore {
+		VariableStore copy();
+		void prepare();
+		Object get(int addr);
+	}
+	
+	private static final EmptyVariableStore VAR_STORE_EMPTY = EmptyVariableStore.INSTANCE;
+	private static final RGBVariableStore   VAR_STORE_RGB   = RGBVariableStore.INSTANCE;
+	private static final FloatVariableStore VAR_STORE_FLOAT = FloatVariableStore.INSTANCE;
+	
+	private static final class EmptyVariableStore implements VariableStore {
+		
+		public static final EmptyVariableStore INSTANCE = new EmptyVariableStore();
+		
+		@Override public VariableStore copy() { return INSTANCE; }
+		@Override public void prepare() {}
+		@Override public Object get(int addr) { return null; }
+	}
+	
+	private static final class RGBVariableStore implements VariableStore {
+		
+		public static final RGBVariableStore INSTANCE = new RGBVariableStore();
+		
+		private int[] rgb;
+		
+		@Override
+		public VariableStore copy() {
+			return new RGBVariableStore();
+		}
+		
+		@Override
+		public void prepare() {
+			rgb = new int[4];
+		}
+		
+		@Override
+		public Object get(int addr) {
+			// Always return RGB array, so it can be JITed easily
+			return rgb;
+		}
+	}
+	
+	private static final class FloatVariableStore implements VariableStore {
+		
+		public static final FloatVariableStore INSTANCE = new FloatVariableStore();
+		
+		private float[] arr;
+		private int  [] rgb;
+		
+		@Override
+		public VariableStore copy() {
+			return new FloatVariableStore();
+		}
+		
+		@Override
+		public void prepare() {
+			arr = new float[4];
+			rgb = new int  [3];
+		}
+		
+		@Override
+		public Object get(int addr) {
+			return addr == 0 ? rgb : arr;
+		}
+	}
+	
+	private final void applyThreadedAction(T input, T output, VariableStore varStore, ThreadedAction<T> action) {
 		final CounterLock lock = new CounterLock();
 		int epp = format.getElementsPerPixel();
 		int x = 0;
@@ -1147,8 +1352,10 @@ public final class IImage<T extends Buffer> {
 			int ai = width - sw;
 			lock.increment();
 			Threads.execute(() -> {
+				VariableStore localVarStore = varStore.copy();
+				localVarStore.prepare();
 				for(int i = si, px = sw, py = sh;; ++i) {
-					action.action(input, output, i * epp);
+					action.action(i, epp, localVarStore);
 					if((--px == 0)) {
 						px = sw;
 						i += ai;
@@ -1165,105 +1372,54 @@ public final class IImage<T extends Buffer> {
 			}
 		}
 		lock.await();
+	}
+	
+	private final void applyActionINT(T input, T output, ActionINT<T> action) {
+		applyThreadedAction(input, output, VAR_STORE_EMPTY, (i, epp, varStore) -> {
+			action.action(input, output, i * epp);
+		});
 	}
 	
 	private final void applyActionRGB(T input, T output, ActionRGB<T> action) {
-		final CounterLock lock = new CounterLock();
-		int epp = format.getElementsPerPixel();
-		int x = 0;
-		int y = 0;
-		int w = width  / 4;
-		int h = height / 4;
-		for(int kx = x, ky = y;;) {
-			int sx = kx;
-			int sy = ky;
-			int sw = kx + w >= width  ? width  - kx : w;
-			int sh = ky + h >= height ? height - ky : h;
-			int si = sy * width + sx;
-			int ai = width - sw;
-			lock.increment();
-			Threads.execute(() -> {
-				int[] rgb = new int[4]; int argb;
-				for(int i = si, px = sw, py = sh;; ++i) {
-					argb   = format.getARGB(input, i * epp);
-					rgb[0] = (argb >> 16) & 0xff;
-					rgb[1] = (argb >>  8) & 0xff;
-					rgb[2] = (argb)       & 0xff;
-					rgb[3] = (argb >> 24) & 0xff;
-					action.action(rgb, input, output, i * epp);
-					format.setPixel(output, i * epp,
-					                clamp02(rgb[0]),
-					                clamp02(rgb[1]),
-					                clamp02(rgb[2]),
-					                clamp02(rgb[3]));
-					if((--px == 0)) {
-						px = sw;
-						i += ai;
-						if((--py == 0))
-							break;
-					}
-				}
-				lock.decrement();
-			});
-			if((kx += w) >= width) {
-				kx  = 0;
-				if((ky += h) >= height)
-					break;
-			}
-		}
-		lock.await();
+		applyThreadedAction(input, output, VAR_STORE_RGB, (i, epp, varStore) -> {
+			int argb; // Variable declarations
+			int[] rgb = (int[]) varStore.get(0);
+			argb   = format.getARGB(input, i * epp);
+			rgb[0] = (argb >> 16) & 0xff;
+			rgb[1] = (argb >>  8) & 0xff;
+			rgb[2] = (argb)       & 0xff;
+			rgb[3] = (argb >> 24) & 0xff;
+			action.action(rgb, input, output, i * epp);
+			format.setPixel(output, i * epp,
+			                clamp02(rgb[0]),
+			                clamp02(rgb[1]),
+			                clamp02(rgb[2]),
+			                clamp02(rgb[3]));
+		});
 	}
 	
-	private final void applyActionHSL(T input, T output, ActionHSL<T> action) {
-		final CounterLock lock = new CounterLock();
-		int epp = format.getElementsPerPixel();
-		int x = 0;
-		int y = 0;
-		int w = width  / 4;
-		int h = height / 4;
-		for(int kx = x, ky = y;;) {
-			int sx = kx;
-			int sy = ky;
-			int sw = kx + w >= width  ? width  - kx : w;
-			int sh = ky + h >= height ? height - ky : h;
-			int si = sy * width + sx;
-			int ai = width - sw;
-			lock.increment();
-			Threads.execute(() -> {
-				float[] hsl = new float[4];
-				int  [] rgb = new int  [3];
-				int argb, red, green, blue, alpha;
-				for(int i = si, px = sw, py = sh;; ++i) {
-					argb  = format.getARGB(input, i * epp);
-					red   = (argb >> 16) & 0xff;
-					green = (argb >>  8) & 0xff;
-					blue  = (argb)       & 0xff;
-					Colors.rgb2hsl(red, green, blue, hsl);
-					hsl[3] = ((argb >> 24) & 0xff) * I2F;
-					action.action(hsl, input, output, i * epp);
-					Colors.hsl2rgb(hsl[0], hsl[1], hsl[2], rgb);
-					alpha = (int) (hsl[3] * F2I);
-					format.setPixel(output, i * epp,
-					                clamp02(rgb[0]),
-					                clamp02(rgb[1]),
-					                clamp02(rgb[2]),
-					                clamp02(alpha));
-					if((--px == 0)) {
-						px = sw;
-						i += ai;
-						if((--py == 0))
-							break;
-					}
-				}
-				lock.decrement();
-			});
-			if((kx += w) >= width) {
-				kx  = 0;
-				if((ky += h) >= height)
-					break;
-			}
-		}
-		lock.await();
+	private final void applyActionFloat(T input, T output, ActionFloat<T> action,
+			ConversionAction<int[], float[]> convForward,
+			ConversionAction<float[], int[]> convInverse) {
+		applyThreadedAction(input, output, VAR_STORE_FLOAT, (i, epp, varStore) -> {
+			int argb, alpha; // Variable declarations
+			float[] arr = (float[]) varStore.get(1);
+			int[]   rgb = (int[])   varStore.get(0);
+			argb   = format.getARGB(input, i * epp);
+			rgb[0] = (argb >> 16) & 0xff;
+			rgb[1] = (argb >>  8) & 0xff;
+			rgb[2] = (argb)       & 0xff;
+			convForward.convert(rgb, arr);
+			arr[3] = ((argb >> 24) & 0xff) * I2F;
+			action.action(arr, input, output, i * epp);
+			convInverse.convert(arr, rgb);
+			alpha = FastMath.round(arr[3] * F2I);
+			format.setPixel(output, i * epp,
+			                clamp02(rgb[0]),
+			                clamp02(rgb[1]),
+			                clamp02(rgb[2]),
+			                clamp02(alpha));
+		});
 	}
 	
 	private final void applyActionINT(ActionINT<T> action) {
@@ -1276,25 +1432,34 @@ public final class IImage<T extends Buffer> {
 		swapBuffer();
 	}
 	
-	private final void applyActionHSL(ActionHSL<T> action) {
-		applyActionHSL(pixels, buffer, action);
+	private final void applyActionHSL(ActionFloat<T> action) {
+		applyActionFloat(pixels, buffer, action,
+ 			(rgb, hsl) -> Colors.rgb2hsl(rgb[0], rgb[1], rgb[2], hsl),
+ 			(hsl, rgb) -> Colors.hsl2rgb(hsl[0], hsl[1], hsl[2], rgb));
+ 		swapBuffer();
+ 	}
+	
+	private final void applyActionHCL(ActionFloat<T> action) {
+		applyActionFloat(pixels, buffer, action,
+			(rgb, hcl) -> Colors.rgb2hcl(rgb[0], rgb[1], rgb[2], hcl),
+			(hcl, rgb) -> Colors.hcl2rgb(hcl[0], hcl[1], hcl[2], rgb));
 		swapBuffer();
 	}
 	
 	private final int matrixMultiplyRGBA(Matrix4f matrix, int r, int g, int b, int a) {
 		float[] result = matrix.multiply(r, g, b, a);
-		return Colors.rgba2int(Colors.f2rgba(result[0]),
-							   Colors.f2rgba(result[1]),
-							   Colors.f2rgba(result[2]),
-							   Colors.f2rgba(result[3]));
+		return Colors.rgba(Colors.f2rgba(result[0]),
+		                   Colors.f2rgba(result[1]),
+		                   Colors.f2rgba(result[2]),
+		                   Colors.f2rgba(result[3]));
 	}
 	
 	private final int matrixMultiplyHSLA(Matrix4f matrix, float h, float s, float l, float a) {
 		float[] result = matrix.multiply(h, s, l, a);
-		return Colors.hsla2int(Colors.f2hsla(result[0]),
-							   Colors.f2hsla(result[1]),
-							   Colors.f2hsla(result[2]),
-							   Colors.f2hsla(result[3]));
+		return Colors.hsla(Colors.f2hsla(result[0]),
+		                   Colors.f2hsla(result[1]),
+		                   Colors.f2hsla(result[2]),
+		                   Colors.f2hsla(result[3]));
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -1316,7 +1481,7 @@ public final class IImage<T extends Buffer> {
 			wrapper.update();
 			FXInternalUtils.updateImageSafe(image);
 		} catch(Exception ex) {
-			ex.printStackTrace();
+			throw new IllegalStateException("Unable to apply changes to an IImage: " + this, ex);
 		}
 	}
 	
@@ -1478,7 +1643,7 @@ public final class IImage<T extends Buffer> {
 	 * @param b The blue component of the color
 	 * @param a The alpha component of the color*/
 	public final void setPixel(int x, int y, int r, int g, int b, int a) {
-		setPixel(x, y, Colors.rgba2int(r, g, b, a));
+		setPixel(x, y, Colors.rgba(r, g, b, a));
 	}
 	
 	/**
@@ -1503,7 +1668,7 @@ public final class IImage<T extends Buffer> {
 	 * @param l The lightness of the color
 	 * @param a The alpha of the color*/
 	public final void setPixel(int x, int y, float h, float s, float l, float a) {
-		setPixel(x, y, Colors.hsla2int(h, s, l, a));
+		setPixel(x, y, Colors.hsla(h, s, l, a));
 	}
 	
 	/**
@@ -1597,7 +1762,7 @@ public final class IImage<T extends Buffer> {
 		return height;
 	}
 	
-	public ImagePixelFormat<T> getPixelFormat() {
+	public final ImagePixelFormat<T> getPixelFormat() {
 		return format;
 	}
 }

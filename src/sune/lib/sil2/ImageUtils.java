@@ -46,8 +46,8 @@ public final class ImageUtils {
 	}
 	
 	private static final <T extends Buffer> void setPixels(WritableImage image, int x, int y, int width, int height,
-			Buffer pixels, int stride, ImagePixelFormat<T> format) {
-		image.getPixelWriter().setPixels(x, y, width, height, format.getWriteFormat(), format.toValidBuffer(pixels), stride);
+			T pixels, int stride, ImagePixelFormat<T> format) {
+		image.getPixelWriter().setPixels(x, y, width, height, format.getWriteFormat(), pixels, stride);
 	}
 	
 	/**
@@ -76,15 +76,16 @@ public final class ImageUtils {
 	 * @param height The height of the area
 	 * @param stride The stride of the image
 	 * @param pixels The pixels*/
-	public static final void setPixels(WritableImage image, int x, int y, int width, int height,
-			Buffer pixels, int stride) {
+	public static final <T extends Buffer> void setPixels(WritableImage image, int x, int y, int width, int height,
+			T pixels, int stride) {
 		if((image == null)) throw new NullPointerException("Invalid image");
 		if((width <= 0 || height <= 0))
 			throw new IllegalArgumentException("Invalid size");
 		if((x < 0 || y < 0 || x >= width || y >= height))
 			throw new IllegalArgumentException("Invalid position");
-		ImagePixelFormat<?> format = ImagePixelFormats.from(image.getPixelReader().getPixelFormat());
-		setPixels(image, x, y, width, height, format.toValidBuffer(pixels), stride, format);
+		@SuppressWarnings("unchecked")
+		ImagePixelFormat<T> format = (ImagePixelFormat<T>) ImagePixelFormats.from(image.getPixelReader().getPixelFormat());
+		setPixels(image, x, y, width, height, pixels, stride, format);
 	}
 	
 	// ----- IMAGE CREATE
@@ -281,7 +282,7 @@ public final class ImageUtils {
 		int rx = (srcw % dstw);
 		int epp = format.getElementsPerPixel();
 		for(int i = 0, k = 0, x = dstw, y = dsth, ex = 0, ey = 0;;) {
-			format.set(dst, k * epp, src, i * epp);
+			format.setARGB(dst, k * epp, src, i * epp);
 			i += dx;
 			k++;
 			if((ex += rx) >= dstw) {
@@ -400,7 +401,7 @@ public final class ImageUtils {
 	// ----- IMAGE FILL
 	
 	/**
-	 * Fills the given pixels array with the given color as an ARGB int.
+	 * Fills the given pixels array with the given color.
 	 * @param pixels The pixels array
 	 * @param color The color*/
 	public static final void fill(Buffer pixels, int color, ImagePixelFormat<?> format) {
@@ -408,7 +409,7 @@ public final class ImageUtils {
 	}
 	
 	/**
-	 * Fills the given image with the given color as an ARGB int.
+	 * Fills the given image with the given color.
 	 * @param image The image
 	 * @param color The color*/
 	public static final void fill(WritableImage image, int color) {
@@ -698,22 +699,22 @@ public final class ImageUtils {
 	 * @param dst The destination image
 	 * @return {@code dst}, if pixels can be copied directly, otherwise
 	 * a new image with the copied pixels.*/
-	public static final WritableImage copyPixels(Image src, WritableImage dest) {
+	public static final WritableImage copyPixels(Image src, WritableImage dst) {
 		if((src == null)) throw new NullPointerException("Invalid source image");
 		int sw = (int) src.getWidth();
 		int sh = (int) src.getHeight();
-		if((dest == null))
-			dest = new WritableImage(sw, sh);
-		int dw = (int) dest.getWidth();
-		int dh = (int) dest.getHeight();
+		if((dst == null))
+			dst = new WritableImage(sw, sh);
+		int dw = (int) dst.getWidth();
+		int dh = (int) dst.getHeight();
 		if((sw == dw && sh == dh)) {
 			// Can copy exact pixels (will not create a new image)
-			dest.getPixelWriter().setPixels(0, 0, dw, dh, src.getPixelReader(), 0, 0);
+			dst.getPixelWriter().setPixels(0, 0, dw, dh, src.getPixelReader(), 0, 0);
 		} else {
 			// Cannot copy exact pixels since dimensions do not match (will create a new image)
-			dest = copy(src);
+			dst = copy(src);
 		}
-		return dest;
+		return dst;
 	}
 	
 	// ----- IMAGE FLIP
@@ -734,7 +735,7 @@ public final class ImageUtils {
 				a = width - m,
 				b = width + m, x = m, y = height, t;;) {
 			t = format.getARGB(pixels, i * epp);
-			format.set(pixels, i * epp, pixels, k * epp);
+			format.setARGB(pixels, i * epp, pixels, k * epp);
 			format.setARGB(pixels, k * epp, t);
 			++i; --k;
 			if((--x == 0)) {
@@ -783,7 +784,7 @@ public final class ImageUtils {
 		T copy = BufferUtils.copy(pixels, format);
 		int epp = format.getElementsPerPixel();
 		for(int x = width, y = height, i = 0, l = pixels.capacity() / epp, k = l - height, a = l + 1;;) {
-			format.set(pixels, k * epp, copy, i * epp);
+			format.setARGB(pixels, k * epp, copy, i * epp);
 			++i;
 			k -= height;
 			if((--x == 0)) {
@@ -808,7 +809,7 @@ public final class ImageUtils {
 		T copy = BufferUtils.copy(pixels, format);
 		int epp = format.getElementsPerPixel();
 		for(int x = width, y = height, i = 0, l = pixels.capacity() / epp, k = height - 1, a = -l - 1;;) {
-			format.set(pixels, k * epp, copy, i * epp);
+			format.setARGB(pixels, k * epp, copy, i * epp);
 			++i;
 			k += height;
 			if((--x == 0)) {
@@ -908,7 +909,7 @@ public final class ImageUtils {
 			// Always blend both colors, no conditions should be here,
 			// internal checks are done in the blend method itself.
 			format.setARGB(result, i, Colors.blend(format.getARGB(foreground, i),
-			                                        format.getARGB(background, i)));
+			                                       format.getARGB(background, i)));
 		}
 	}
 	

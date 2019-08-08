@@ -99,36 +99,100 @@ public final class Colors {
         return p;
 	}
 	
-	/*public static final void rgb2hcl(int r, int g, int b, float[] result) {
-	}*/
+	private static final float _xR =  95.0489f;
+	private static final float _yR = 100.0000f;
+	private static final float _zR = 108.8840f;
 	
-	/**
-	 * Converts a color, given by the red, green, blue and alpha components,
-	 * to an int. The result is an ARGB int with 8-bit depth per component.
-	 * @param r The red component of a color, in range {@code 0} - {@code 255}
-	 * @param g The green component of a color, in range {@code 0} - {@code 255}
-	 * @param b The blue component of a color, in range {@code 0} - {@code 255}
-	 * @param a The alpha component of a color, in range {@code 0} - {@code 255}
-	 * @return The ARGB int representation of the given color*/
-	public static final int rgba2int(int r, int g, int b, int a) {
-        return ((a & 0xff) << 24) |
-        	   ((r & 0xff) << 16) |
-        	   ((g & 0xff) << 8)  |
-        	   ((b & 0xff));
+	private static final float func_xyz2lab(float t) {
+		return t > 0.008856f ? FastMath.pow(t, 1.0f / 3.0f) : (t / 0.128419f) + 0.137931f;
+	}
+	
+	private static final float func_lab2xyz(float t) {
+		return t > 0.206897f ? FastMath.pow(t, 3.0f) : 0.128419f * (t - 0.137931f);
+	}
+	
+	// r, g, b are in range <0, 1>
+	// x, y, z are in range <0, 1>
+	public static final void rgb2xyz(float r, float g, float b, float[] xyz) {
+		// https://en.wikipedia.org/wiki/SRGB
+		xyz[0] = 0.4124f * r + 0.3576f * g + 0.1805f * b;
+		xyz[1] = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+		xyz[2] = 0.0193f * r + 0.1192f * g + 0.9504f * b;
+	}
+	
+	public static final void xyz2lab(float x, float y, float z, float[] lab) {
+		// // https://en.wikipedia.org/wiki/CIELAB_color_space
+		float fx = func_xyz2lab(x / _xR);
+		float fy = func_xyz2lab(y / _yR);
+		float fz = func_xyz2lab(z / _zR);
+		lab[0] = 116.0f * (fy) - 16.0f;
+		lab[1] = 500.0f * (fx - fy);
+		lab[2] = 200.0f * (fy - fz);
+	}
+	
+	public static final void lab2lch(float l, float a, float b, float[] lch) {
+		lch[0] = l;
+		lch[1] = (float) Math.hypot(a, b);
+		lch[2] = (float) Math.atan2(b, a);
 	}
 	
 	/**
-	 * Converts a color, given by the hue, saturation, lightness and alpha components,
-	 * to an int. The result is an ARGB int with 8-bit depth per component.
-	 * @param h The hue component of a color, in range {@code 0} - {@code 1}
-	 * @param s The saturation component of a color, in range {@code 0} - {@code 1}
-	 * @param l The lightness component of a color, in range {@code 0} - {@code 1}
-	 * @param a The alpha component of a color, in range {@code 0} - {@code 1}
-	 * @return The ARGB int representation of the given color*/
-	public static final int hsla2int(float h, float s, float l, float a) {
-		int[] rgb = new int[3];
-		hsl2rgb(h, s, l, rgb);
-		return rgba2int(rgb[0], rgb[1], rgb[2], (int) (a * F2I));
+	 * Experimental method, pending documentation.
+	 * @experimental
+	 * @author Sune*/
+	public static final void rgb2hcl(int r, int g, int b, float[] result) {
+		float[] xyz = new float[3];
+		float[] lab = new float[3];
+		float[] lch = new float[3];
+		rgb2xyz(r * I2F, g * I2F, b * I2F, xyz);
+		xyz2lab(xyz[0],  xyz[1],  xyz[2],  lab);
+		lab2lch(lab[0],  lab[1],  lab[2],  lch);
+		result[0] = lch[2];
+		result[1] = lch[1];
+		result[2] = lch[0];
+	}
+	
+	public static final void lch2lab(float l, float c, float h, float[] lab) {
+		float a = c * (float) Math.cos(h);
+		float b = c * (float) Math.sin(h);
+		lab[0] = l;
+		lab[1] = a;
+		lab[2] = b;
+	}
+	
+	public static final void lab2xyz(float l, float a, float b, float[] xyz) {
+		// https://en.wikipedia.org/wiki/CIELAB_color_space
+		float fy = (l + 16.0f) / 116.0f;
+		float fx = (a) / 500.0f;
+		float fz = (b) / 200.0f;
+		xyz[0] = _xR * func_lab2xyz(fy + fx);
+		xyz[1] = _yR * func_lab2xyz(fy);
+		xyz[2] = _zR * func_lab2xyz(fy - fz);
+	}
+	
+	// r, g, b are in range <0, 1>
+	// x, y, z are in range <0, 1>
+	public static final void xyz2rgb(float x, float y, float z, float[] rgb) {
+		// https://en.wikipedia.org/wiki/SRGB
+		rgb[0] =  3.2406f * x - 1.5372f * y - 0.4986f * z;
+		rgb[1] = -0.9689f * x + 1.8758f * y + 0.0415f * z;
+		rgb[2] =  0.0557f * x - 0.2040f * y + 1.0570f * z;
+	}
+	
+	/**
+	 * Experimental method, pending documentation.
+	 * @experimental
+	 * @author Sune*/
+	public static final void hcl2rgb(float h, float c, float l, int[] result) {
+		float[] lab = new float[3];
+		float[] xyz = new float[3];
+		float[] rgb = new float[3];
+		lch2lab(l,      c,      h,      lab);
+		lab2xyz(lab[0], lab[1], lab[2], xyz);
+		xyz2rgb(xyz[0], xyz[1], xyz[2], rgb);
+		result[0] = FastMath.round(rgb[0] * F2I);
+		result[1] = FastMath.round(rgb[1] * F2I);
+		result[2] = FastMath.round(rgb[2] * F2I);
 	}
 	
 	/**
@@ -302,6 +366,12 @@ public final class Colors {
 		return (int) value;
 	}
 	
+	public static final int i2rgba(int value) {
+		if((value <= 0x00)) return 0x00;
+		if((value >= 0xff)) return 0xff;
+		return value;
+	}
+	
 	/**
 	 * Clamps the given float value to a float value in range {@code 0} - {@code 1}.
 	 * @param value The value
@@ -346,7 +416,18 @@ public final class Colors {
 	 * @param magnitude The normalized magnitude, in range {@code 0} - {@code 1}
 	 * @return The sobel value as an ARGB int color.*/
 	public static final int sobel(float direction, float magnitude) {
-		return hsla2int(direction * IPI, magnitude, magnitude, 1.0f);
+		return hsla(direction * IPI, magnitude, magnitude, 1.0f);
+	}
+	
+	/**
+	 * Computed from the Sobel kernel. Maximum value in both x and y
+	 * direction is {@code 4 * 255}.<br>
+	 * The formula is:<br>
+	 * {@code MAX = sqrt((4 * 255)^2 + (4 * 255)^2) = ~1442.497834}.*/
+	private static final float SOBEL_MAX_MAGNITUDE = 1442.5f;
+	
+	public static final int sobelXY(float x, float y) {
+		return sobel(FastMath.atan2(y, x), FastMath.hypot(y, x) / SOBEL_MAX_MAGNITUDE);
 	}
 	
 	/**
@@ -408,6 +489,13 @@ public final class Colors {
 			   (b  << SHIFT_B);
 	}
 	
+	public static final void linear2premult(int r, int g, int b, int a, byte[] result) {
+		result[0] = (byte) FastMath.div255(r * a);
+		result[1] = (byte) FastMath.div255(g * a);
+		result[2] = (byte) FastMath.div255(b * a);
+		result[3] = (byte) a;
+	}
+	
 	/**
 	 * Converts a 32-bit color, given by the ARGB int, from premultiplied alpha
 	 * to linear alpha.
@@ -424,4 +512,182 @@ public final class Colors {
 			   (g  << SHIFT_G) |
 			   (b  << SHIFT_B);
 	}
+	
+	public static final void premult2linear(int r, int g, int b, int a, byte[] result) {
+		if((a == 0x0)) {
+			result[0] = result[1] = result[2] = result[3] = 0;
+			return;
+		}
+		result[0] = (byte) (FastMath.mul255(r) / a);
+		result[1] = (byte) (FastMath.mul255(g) / a);
+		result[2] = (byte) (FastMath.mul255(b) / a);
+		result[3] = (byte) a;
+	}
+	
+	// ----- COLOR CREATION (ARGB format) [Non-premultiplied colors]
+	
+	private static final int rgba2int(int r, int g, int b, int a) {
+		return ((a & 0xff) << SHIFT_A) |
+			   ((r & 0xff) << SHIFT_R) |
+			   ((g & 0xff) << SHIFT_G) |
+			   ((b & 0xff) << SHIFT_B);
+	}
+	
+	public static final int rgb(int r, int g, int b) {
+		return rgba(r, g, b, 0xff);
+	}
+	
+	/**
+	 * Converts a color, given by the red, green, blue and alpha components,
+	 * to an int. The result is an ARGB int with 8-bit depth per component.
+	 * @param r The red component of a color, in range {@code 0} - {@code 255}
+	 * @param g The green component of a color, in range {@code 0} - {@code 255}
+	 * @param b The blue component of a color, in range {@code 0} - {@code 255}
+	 * @param a The alpha component of a color, in range {@code 0} - {@code 255}
+	 * @return The ARGB int representation of the given color*/
+	public static final int rgba(int r, int g, int b, int a) {
+		return rgba2int(r, g, b, a);
+	}
+	
+	public static final int hsl(float h, float s, float l) {
+		return hsla(h, s, l, 1.0f);
+	}
+	
+	/**
+	 * Converts a color, given by the hue, saturation, lightness and alpha components,
+	 * to an int. The result is an ARGB int with 8-bit depth per component.
+	 * @param h The hue component of a color, in range {@code 0} - {@code 1}
+	 * @param s The saturation component of a color, in range {@code 0} - {@code 1}
+	 * @param l The lightness component of a color, in range {@code 0} - {@code 1}
+	 * @param a The alpha component of a color, in range {@code 0} - {@code 1}
+	 * @return The ARGB int representation of the given color*/
+	public static final int hsla(float h, float s, float l, float a) {
+		int[] rgb = new int[3];
+		Colors.hsl2rgb(h, s, l, rgb);
+		return rgba(rgb[0], rgb[1], rgb[2], FastMath.round(a * F2I));
+	}
+	
+	public static final int hcl(float h, float c, float l) {
+		return hcla(h, c, l, 1.0f);
+	}
+	
+	public static final int hcla(float h, float c, float l, float a) {
+		int[] rgb = new int[3];
+		hcl2rgb(h, c, l, rgb);
+		return rgba(rgb[0], rgb[1], rgb[2], FastMath.round(a * F2I));
+	}
+	
+	public static final int xyz(float x, float y, float z) {
+		float[] rgb = new float[3];
+		xyz2rgb(x, y, z, rgb);
+		return rgba(FastMath.round(rgb[0] * F2I),
+		            FastMath.round(rgb[1] * F2I),
+		            FastMath.round(rgb[2] * F2I),
+		            0xff);
+	}
+	
+	public static final int lab(float l, float a, float b) {
+		float[] xyz = new float[3];
+		lab2xyz(l, a, b, xyz);
+		return xyz(xyz[0], xyz[1], xyz[2]);
+	}
+	
+	// -----
+	
+	// ----- COLOR CREATION (ARGB format) [Premultiplied colors]
+	
+	private final int rgba2intPre(int r, int g, int b, int a) {
+		byte[] premult = new byte[4];
+		linear2premult(r, g, b, a, premult);
+		r = premult[0];
+		g = premult[1];
+		b = premult[2];
+		a = premult[3];
+		return ((a & 0xff) << 24) |
+			   ((r & 0xff) << 16) |
+			   ((g & 0xff) <<  8) |
+			   ((b & 0xff));
+	}
+	
+	public final int rgbPre(int r, int g, int b) {
+		return rgbaPre(r, g, b, 0xff);
+	}
+	
+	public final int rgbaPre(int r, int g, int b, int a) {
+		return rgba2intPre(r, g, b, a);
+	}
+	
+	public final int hslPre(float h, float s, float l) {
+		return hslaPre(h, s, l, 1.0f);
+	}
+	
+	public final int hslaPre(float h, float s, float l, float a) {
+		int[] rgb = new int[3];
+		Colors.hsl2rgb(h, s, l, rgb);
+		return rgbaPre(rgb[0], rgb[1], rgb[2], FastMath.round(a * F2I));
+	}
+	
+	public final int hclPre(float h, float c, float l) {
+		return hclaPre(h, c, l, 1.0f);
+	}
+	
+	public final int hclaPre(float h, float c, float l, float a) {
+		int[] rgb = new int[3];
+		Colors.hcl2rgb(h, c, l, rgb);
+		return rgbaPre(rgb[0], rgb[1], rgb[2], FastMath.round(a * F2I));
+	}
+	
+	public final int xyzPre(float x, float y, float z) {
+		float[] rgb = new float[3];
+		Colors.xyz2rgb(x, y, z, rgb);
+		return rgbaPre(FastMath.round(rgb[0] * F2I),
+		               FastMath.round(rgb[1] * F2I),
+		               FastMath.round(rgb[2] * F2I),
+		               0xff);
+	}
+	
+	public final int labPre(float l, float a, float b) {
+		float[] xyz = new float[3];
+		Colors.lab2xyz(l, a, b, xyz);
+		return xyzPre(xyz[0], xyz[1], xyz[2]);
+	}
+	
+	public final int colorPre(Color color) {
+		if((color == null)) throw new NullPointerException("Invalid color");
+		int r = FastMath.round((float) color.getRed()     * F2I);
+		int g = FastMath.round((float) color.getGreen()   * F2I);
+		int b = FastMath.round((float) color.getBlue()    * F2I);
+		int a = FastMath.round((float) color.getOpacity() * F2I);
+		return rgbaPre(r, g, b, a);
+	}
+	
+	public final int fromARGBPre(int argb) {
+		int a = (argb >> 24) & 0xff;
+		int r = (argb >> 16) & 0xff;
+		int g = (argb >>  8) & 0xff;
+		int b = (argb)       & 0xff;
+		byte[] linear = new byte[4];
+		premult2linear(r, g, b, a, linear);
+		r = linear[0];
+		g = linear[1];
+		b = linear[2];
+		a = linear[3];
+		return rgba(r, g, b, a);
+	}
+	
+	public final int toARGBPre(int color) {
+		int a = (color >> 24) & 0xff;
+		int r = (color >> 16) & 0xff;
+		int g = (color >>  8) & 0xff;
+		int b = (color)       & 0xff;
+		byte[] premult = new byte[4];
+		linear2premult(r, g, b, a, premult);
+		r = premult[0];
+		g = premult[1];
+		b = premult[2];
+		a = premult[3];
+		return (a << 24) | (r << 16) | (g << 8) | (b);
+	}
+	
+	// -----
 }

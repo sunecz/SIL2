@@ -1,6 +1,7 @@
 package sune.lib.sil2;
 
 import java.lang.reflect.Method;
+import java.nio.Buffer;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelFormat;
@@ -48,11 +49,19 @@ public final class NativeImage {
 		nativePixelFormat = format;
 	}
 	
+	public static final WritableImage create(int width, int height) {
+		return FXImage.create(getNativePixelFormat(), width, height);
+	}
+	
+	public static final <T extends Buffer> WritableImage create(int width, int height, T buffer) {
+		return FXImage.create(getNativePixelFormat(), buffer, width, height);
+	}
+	
 	public static final Image ensurePixelFormat(Image image) {
 		PixelFormat<?> format = image.getPixelReader().getPixelFormat();
 		Type typeImg = format.getType();
 		Type typeNat = nativePixelFormat.getType();
-		// If the formats are the same, no neede to convert the image
+		// If the formats are the same, no need to convert the image
 		if((typeImg == typeNat)) return image;
 		int width  = (int) image.getWidth();
 		int height = (int) image.getHeight();
