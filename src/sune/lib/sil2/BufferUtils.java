@@ -1,11 +1,15 @@
 package sune.lib.sil2;
 
-import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
+import sune.lib.sil2.format.ARGBImagePixelFormat;
+import sune.lib.sil2.format.ARGBPreImagePixelFormat;
+import sune.lib.sil2.format.BGRAImagePixelFormat;
+import sune.lib.sil2.format.BGRAPreImagePixelFormat;
 import sune.lib.sil2.format.ImagePixelFormat;
+import sune.lib.sil2.format.RGBImagePixelFormat;
 
 public final class BufferUtils {
 	
@@ -19,6 +23,13 @@ public final class BufferUtils {
 		return copy;
 	}
 	
+	public static final <T extends Buffer> T copy(T buffer) {
+		@SuppressWarnings("unchecked")
+		T copy = (T) newBufferOfType(buffer);
+		buffercopy(buffer, copy);
+		return copy;
+	}
+	
 	public static final void buffercopy(Buffer src, int srcOff, Buffer dst, int dstOff, int length) {
 		System.arraycopy(src.array(), srcOff, dst.array(), dstOff, length);
 	}
@@ -27,21 +38,21 @@ public final class BufferUtils {
 		buffercopy(src, 0, dst, 0, src.capacity());
 	}
 	
-	private static final void fillBuffer(ByteBuffer buffer, int value, int epp) {
+	private static final void fill(ByteBuffer buffer, int value, int epp) {
 		for(int i = 0, l = buffer.capacity(); i < l; i += epp) {
 			buffer.putInt(i, value);
 		}
 	}
 	
-	private static final void fillBuffer(IntBuffer buffer, int value, int epp) {
+	private static final void fill(IntBuffer buffer, int value, int epp) {
 		for(int i = 0, l = buffer.capacity(); i < l; i += epp) {
 			buffer.put(i, value);
 		}
 	}
 	
 	public static final void fill(Buffer buffer, int value, int epp) {
-		if((buffer instanceof ByteBuffer)) fillBuffer((ByteBuffer) buffer, value, epp); else
-		if((buffer instanceof IntBuffer))  fillBuffer((IntBuffer)  buffer, value, epp); else
+		if((buffer instanceof ByteBuffer)) fill((ByteBuffer) buffer, value, epp); else
+		if((buffer instanceof IntBuffer))  fill((IntBuffer)  buffer, value, epp); else
 		throw new UnsupportedOperationException("Unsupported buffer: " + buffer);
 	}
 	
@@ -49,51 +60,47 @@ public final class BufferUtils {
 		int capacity = buffer.capacity();
 		if((buffer instanceof ByteBuffer)) return ByteBuffer.allocate(capacity);
 		if((buffer instanceof IntBuffer))  return IntBuffer .allocate(capacity);
-		throw new UnsupportedOperationException("Buffer: " + buffer);
+		throw new UnsupportedOperationException("Unsupported buffer: " + buffer);
 	}
 	
-	private static Class<?> CLASS_B2I_BUFFER_B;
-	private static Class<?> CLASS_B2I_BUFFER_L;
-	private static Field FIELD_B2I_BUFFER_B_BB;
-	private static Field FIELD_B2I_BUFFER_L_BB;
-	private static boolean inited;
-	
-	private static final void initFields() {
-		if((inited)) return;
-		try {
-			CLASS_B2I_BUFFER_B = Class.forName("java.nio.ByteBufferAsIntBufferB");
-			CLASS_B2I_BUFFER_L = Class.forName("java.nio.ByteBufferAsIntBufferL");
-			FIELD_B2I_BUFFER_B_BB = CLASS_B2I_BUFFER_B.getDeclaredField("bb");
-			FIELD_B2I_BUFFER_L_BB = CLASS_B2I_BUFFER_B.getDeclaredField("bb");
-			Reflection.setAccessible(FIELD_B2I_BUFFER_B_BB, true);
-			Reflection.setAccessible(FIELD_B2I_BUFFER_L_BB, true);
-			inited = true;
-		} catch(Exception ex) {
-			throw new IllegalStateException("Unable to initialize fields", ex);
+	public static final Buffer ensureType(Buffer buffer, ImagePixelFormat<?> format) {
+		if((format instanceof ARGBImagePixelFormat ||
+			format instanceof ARGBPreImagePixelFormat)) {
+			return ensureType(buffer, IntBuffer.class);
 		}
-	}
-	
-	private static final ByteBuffer _intBuffer2byteBuffer_B_BB(IntBuffer buffer) {
-		try {
-			return (ByteBuffer) FIELD_B2I_BUFFER_B_BB.get(buffer);
-		} catch(Exception ex) {
-			throw new IllegalStateException("Unable to obtain the byte buffer field", ex);
+		if((format instanceof BGRAImagePixelFormat ||
+			format instanceof BGRAPreImagePixelFormat ||
+			format instanceof RGBImagePixelFormat)) {
+			return ensureType(buffer, ByteBuffer.class);
 		}
+		throw new UnsupportedOperationException("Unsupported format: " + format);
 	}
 	
-	private static final ByteBuffer _intBuffer2byteBuffer_L_BB(IntBuffer buffer) {
-		try {
-			return (ByteBuffer) FIELD_B2I_BUFFER_B_BB.get(buffer);
-		} catch(Exception ex) {
-			throw new IllegalStateException("Unable to obtain the byte buffer field", ex);
+	public static final Buffer ensureType(Buffer buffer, Buffer bufferOfType) {
+		Class<? extends Buffer> clazz = ByteBuffer.class;
+		if((bufferOfType instanceof IntBuffer)) clazz = IntBuffer.class;
+		return ensureType(buffer, clazz);
+	}
+	
+	public static final Buffer ensureType(Buffer buffer, Class<? extends Buffer> clazz) {
+		if((buffer instanceof ByteBuffer)) {
+			ByteBuffer buf = (ByteBuffer) buffer;
+			if((clazz == ByteBuffer.class)) return buf;
+			if((clazz == IntBuffer.class)) {
+				IntBuffer copy = IntBuffer.allocate(buf.capacity() / Integer.BYTES);
+				copy.put(buf.asIntBuffer());
+				return copy;
+			}
+		} else
+		if((buffer instanceof IntBuffer)) {
+			IntBuffer buf = (IntBuffer) buffer;
+			if((clazz == IntBuffer.class)) return buf;
+			if((clazz == ByteBuffer.class)) {
+				ByteBuffer copy = ByteBuffer.allocate(buf.capacity() * Integer.BYTES);
+				copy.asIntBuffer().put(buf);
+				return copy;
+			}
 		}
-	}
-	
-	public static final ByteBuffer intBuffer2byteBuffer(IntBuffer buffer) {
-		initFields();
-		Class<?> clazz = buffer.getClass();
-		if((clazz == CLASS_B2I_BUFFER_B)) return _intBuffer2byteBuffer_B_BB(buffer);
-		if((clazz == CLASS_B2I_BUFFER_L)) return _intBuffer2byteBuffer_L_BB(buffer);
-		throw new UnsupportedOperationException("Unsupported class: " + clazz);
+		throw new UnsupportedOperationException("Unsupported conversion: " + buffer.getClass() + " -> " + clazz);
 	}
 }

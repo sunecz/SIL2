@@ -7,7 +7,7 @@ import java.nio.Buffer;
 import javafx.application.Platform;
 import javafx.scene.image.Image;
 
-public final class FXInternalUtils {
+final class FXInternalUtils {
 	
 	public static final class PlatformImageWrapper {
 		

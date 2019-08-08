@@ -13,7 +13,6 @@ import java.util.Objects;
 
 import javax.imageio.ImageIO;
 
-import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 
 /**
@@ -52,7 +51,7 @@ public final class ImageOpener {
 		try(InputStream _input = input) {
 			BufferedImage bimg = ImageIO.read(_input);
 			if((bimg != null))
-				return SwingFXUtils.toFXImage(bimg, null);
+				return FXAWT.fxImage(bimg);
 		}
 		return null;
 	}

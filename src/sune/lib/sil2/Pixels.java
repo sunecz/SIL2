@@ -36,7 +36,7 @@ public final class Pixels {
 		// in the consecutive order from left to right from top to bottom,
 		// we can use System.arraycopy to make the copying faster.
 		// Note that it is not true that System.arraycopy is always faster,
-		// in cases where there it is the need to copy just a small portion
+		// in cases where there is the need to copy just a small portion
 		// of an image, it can be faster to just use a good old loop. However,
 		// in those scenarios the penalty is so low it can be ignored.
 		Object asrc = src.array(), adst = dst.array();

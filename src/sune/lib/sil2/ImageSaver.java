@@ -16,7 +16,6 @@ import java.util.Objects;
 
 import javax.imageio.ImageIO;
 
-import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import sune.lib.sil2.format.ImageFormat;
 
@@ -65,7 +64,7 @@ public final class ImageSaver {
 			int width  = (int) image.getWidth();
 			int height = (int) image.getHeight();
 			// Fixes bug with a pink-toned image
-			BufferedImage iimg = SwingFXUtils.fromFXImage(image, null);
+			BufferedImage iimg = FXAWT.awtImage(image);
 			BufferedImage bimg = new BufferedImage(width, height, format.getImageType());
 			Graphics2D g2d = bimg.createGraphics();
 			// Make sure that the background is white, when there is a loss of transparency

@@ -1,18 +1,18 @@
 package sune.lib.sil2.format;
 
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritablePixelFormat;
-import sune.lib.sil2.BufferUtils;
 
 public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 	
 	private static final int ELEMENTS_PER_PIXEL = 3;
 	
-	RGBImagePixelFormat() {
+	public static final RGBImagePixelFormat INSTANCE = new RGBImagePixelFormat();
+	
+	// Forbid anyone to create an instance of this class
+	private RGBImagePixelFormat() {
 	}
 	
 	@Override
@@ -32,7 +32,6 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 	
 	@Override
 	public int getShiftA() {
-		// It is not used, but keep it here so that it is compatible with other formats
 		return 24;
 	}
 	
@@ -43,23 +42,12 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 	
 	@Override
 	public PixelFormat<ByteBuffer> getWriteFormat() {
-		return PixelFormat.getByteBgraInstance();
+		return PixelFormat.getByteRgbInstance();
 	}
 	
 	@Override
 	public ByteBuffer newBuffer(int length) {
 		return ByteBuffer.allocate(length * ELEMENTS_PER_PIXEL);
-	}
-	
-	@Override
-	public ByteBuffer toValidBuffer(Buffer buffer) {
-		if((buffer instanceof ByteBuffer))
-			return (ByteBuffer) buffer;
-		if((buffer instanceof IntBuffer)) {
-			return BufferUtils.intBuffer2byteBuffer((IntBuffer) buffer);
-		}
-		throw new UnsupportedOperationException
-			("Unable to convert buffer (" + buffer + ") to a valid buffer for this format.");
 	}
 	
 	@Override
@@ -69,9 +57,9 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 	
 	@Override
 	public void setPixel(ByteBuffer dst, int i, int r, int g, int b, int a) {
-		dst.put(i,     (byte) b);
+		dst.put(i,     (byte) r);
 		dst.put(i + 1, (byte) g);
-		dst.put(i + 2, (byte) r);
+		dst.put(i + 2, (byte) b);
 	}
 	
 	@Override
@@ -81,9 +69,7 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 	
 	@Override
 	public void set(ByteBuffer dst, int i, ByteBuffer src, int k) {
-		dst.put(i,     src.get(k    ));
-		dst.put(i + 1, src.get(k + 1));
-		dst.put(i + 2, src.get(k + 2));
+		dst.put(i, src.get(k));
 	}
 	
 	@Override
@@ -91,7 +77,7 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 		setPixel(dst, i, (argb >> 16) & 0xff,
 		                 (argb >>  8) & 0xff,
 		                 (argb)       & 0xff,
-		                 (0xff >> 24) & 0xff);
+		                                0xff);
 	}
 	
 	@Override
@@ -99,7 +85,14 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 		setPixelPre(dst, i, (argb >> 16) & 0xff,
 		                    (argb >>  8) & 0xff,
 		                    (argb)       & 0xff,
-		                    (argb >> 24) & 0xff);
+		                                   0xff);
+	}
+	
+	@Override
+	public void setARGB(ByteBuffer dst, int i, ByteBuffer src, int k) {
+		dst.put(i,     src.get(k    ));
+		dst.put(i + 1, src.get(k + 1));
+		dst.put(i + 2, src.get(k + 2));
 	}
 	
 	@Override
@@ -109,10 +102,10 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 	
 	@Override
 	public int getARGB(ByteBuffer src, int i) {
-		return ((src.get(i))    & 0xff)        |
-			   ((src.get(i + 1) & 0xff) <<  8) |
-			   ((src.get(i + 2) & 0xff) << 16) |
-			   ((                 0xff) << 24);
+		return ((src.get(i + 2)) & 0xff)        |
+			   ((src.get(i + 1)  & 0xff) <<  8) |
+			   ((src.get(i)      & 0xff) << 16) |
+			   ((0xff000000));
 	}
 	
 	@Override
@@ -122,7 +115,7 @@ public final class RGBImagePixelFormat implements ImagePixelFormat<ByteBuffer> {
 	
 	@Override
 	public int getElementsPerPixel() {
-		return 3;
+		return ELEMENTS_PER_PIXEL;
 	}
 	
 	@Override

@@ -1,7 +1,5 @@
 package sune.lib.sil2.format;
 
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
 import javafx.scene.image.PixelFormat;
@@ -11,7 +9,10 @@ public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	
 	private static final int ELEMENTS_PER_PIXEL = 1;
 	
-	ARGBImagePixelFormat() {
+	public static final ARGBImagePixelFormat INSTANCE = new ARGBImagePixelFormat();
+	
+	// Forbid anyone to create an instance of this class
+	private ARGBImagePixelFormat() {
 	}
 	
 	@Override
@@ -50,17 +51,6 @@ public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	}
 	
 	@Override
-	public IntBuffer toValidBuffer(Buffer buffer) {
-		if((buffer instanceof IntBuffer))
-			return (IntBuffer) buffer;
-		if((buffer instanceof ByteBuffer)) {
-			return ((ByteBuffer) buffer).asIntBuffer();
-		}
-		throw new UnsupportedOperationException
-			("Unable to convert buffer (" + buffer + ") to a valid buffer for this format.");
-	}
-	
-	@Override
 	public void set(IntBuffer dst, int i, int value) {
 		dst.put(i, value);
 	}
@@ -94,6 +84,11 @@ public final class ARGBImagePixelFormat implements ImagePixelFormat<IntBuffer> {
 	@Override
 	public void setARGBPre(IntBuffer dst, int i, int argb) {
 		dst.put(i, ImagePixelFormatUtils.premult2linear(argb));
+	}
+	
+	@Override
+	public void setARGB(IntBuffer dst, int i, IntBuffer src, int k) {
+		dst.put(i, src.get(k));
 	}
 	
 	@Override
