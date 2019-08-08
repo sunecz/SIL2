@@ -984,10 +984,10 @@ public final class IImage<T extends Buffer> {
 		 * Applies shadow effect to {@code this} image. The shadow is created in
 		 * the given angle in distance of the given position and its color is that
 		 * of the given color.
-		 * @param angle The angle
+		 * @param angle The angle, in radians
 		 * @param distX The x-coordinate of the distance
 		 * @param distY The y-coordinate of the distance
-		 * @param color The color*/
+		 * @param color The color, as an ARGB int*/
 		public final void shadow(float angle, float distX, float distY, int color) {
 			int epp = format.getElementsPerPixel();
 			BufferUtils.fill(buffer, 0x0, epp);
@@ -995,7 +995,7 @@ public final class IImage<T extends Buffer> {
 			float dx = FastMath.cos(angle) * distX;
 			float dy = FastMath.sin(angle) * distY;
 			float x = dx, y = dy;
-			for(int i = 0, k = width, l = pixels.capacity(); i < l; i += epp) {
+			for(int i = 0, k = width;; i += epp) {
 				if((x >= 0 && x < width) && (y >= 0 && y < height)) {
 					if((format.getARGB(pixels, i) >>> 24) != 0x0) {
 						format.setARGB(buffer, ((int) y * width + (int) x) * epp, color);
