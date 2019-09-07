@@ -2,6 +2,7 @@ package sune.lib.sil2;
 
 import java.nio.Buffer;
 import java.util.Arrays;
+import java.util.function.Function;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
@@ -12,7 +13,8 @@ import sune.lib.sil2.format.ImagePixelFormats;
 
 /**
  * Represents an image to which can be applied various operations.
- * The "I" in Image stands for Improved.*/
+ * The "I" in Image stands for Improved.
+ * @param <T> The type of an underlying buffer this image uses*/
 public final class IImage<T extends Buffer> {
 	
 	private static final float F2I = 255.0f;
@@ -463,6 +465,9 @@ public final class IImage<T extends Buffer> {
 			});
 		}
 		
+		/**
+		 * Alters the chroma of {@code this} image.
+		 * @param value The value*/
 		public final void chroma(float value) {
 			final float fval = clamp00(value);
 			applyActionHCL((hcl, input, output, index) -> {
@@ -616,7 +621,8 @@ public final class IImage<T extends Buffer> {
 		/**
 		 * Applies motion blur of the given angle to {@code this} image.
 		 * @param angleDeg The angle, in degrees
-		 * @param value The value*/
+		 * @param value The value
+		 * @param premultiply If {@code true}, premultiplies the pixels*/
 		public final void motionBlur(float angleDeg, float value, boolean premultiply) {
 			int cos = FastMath.round(value * FastMath.cosDeg(angleDeg));
 			int sin = FastMath.round(value * FastMath.sinDeg(angleDeg));
@@ -1516,13 +1522,31 @@ public final class IImage<T extends Buffer> {
 	 * Gets the histogram of {@code this} image.
 	 * @return The histogram as an array of 256 ints.*/
 	public final int[] histogram() {
-		int epp = format.getElementsPerPixel();
 		int[] histogram = new int[256];
+		histogram(histogram);
+		return histogram;
+	}
+	
+	/**
+	 * Computes the histogram of {@code this} image using {@linkplain Colors#grayscale}
+	 * method and stores the result in the given integer array.
+	 * @param histogram The array where to save the computed histogram*/
+	public final void histogram(int[] histogram) {
+		histogram(histogram, Colors::grayscale);
+	}
+	
+	/**
+	 * Computes the histogram of {@code this} image using the given function
+	 * and stores the result in the given integer array. The function is applied
+	 * to every pixel.
+	 * @param histogram The array where to save the computed histogram
+	 * @param function The function to be applied to every pixel*/
+	public final void histogram(int[] histogram, Function<Integer, Integer> function) {
+		int epp = format.getElementsPerPixel();
 		for(int i = 0, l = pixels.capacity(), level; i < l; i += epp) {
-			level = format.getARGB(pixels, i) & 0xff;
+			level = function.apply(format.getARGB(pixels, i));
 			++histogram[level];
 		}
-		return histogram;
 	}
 	
 	/**
@@ -1743,7 +1767,7 @@ public final class IImage<T extends Buffer> {
 	
 	/**
 	 * Gets pixels of {@code this} image.
-	 * @return The pixels, as an array of ARGB ints*/
+	 * @return Buffer containing the pixels*/
 	public final T getPixels() {
 		return pixels;
 	}
@@ -1762,6 +1786,9 @@ public final class IImage<T extends Buffer> {
 		return height;
 	}
 	
+	/**
+	 * Gets the pixel format of {@code this} image.
+	 * @return The pixel format*/
 	public final ImagePixelFormat<T> getPixelFormat() {
 		return format;
 	}

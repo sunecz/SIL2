@@ -28,6 +28,7 @@ public final class Channels {
 	
 	/**
 	 * Combines masks of the given color channels to a single mask.
+	 * @param pixelFormat The pixel format
 	 * @param channels The channels
 	 * @return The combined mask*/
 	public static final int combineMasks(ImagePixelFormat<?> pixelFormat, ColorChannel... channels) {
@@ -45,6 +46,7 @@ public final class Channels {
 	/**
 	 * Separates the given channel from all values in the {@code input} array and stores
 	 * the result in the {@code output} array.
+	 * @param pixelFormat The pixel format
 	 * @param input The input of ARGB int colors
 	 * @param output The output
 	 * @param channel The channel to be separated*/
@@ -65,6 +67,7 @@ public final class Channels {
 	/**
 	 * Separates a channel, given by the shift, from all values in the {@code input} array
 	 * and stores the result in the {@code output} array.
+	 * @param pixelFormat The pixel format
 	 * @param input The input of ARGB int colors
 	 * @param output The output
 	 * @param shift The shift of a channel to be separated*/
@@ -85,6 +88,7 @@ public final class Channels {
 	/**
 	 * Separates red, green, blue and alpha channels from all values in the {@code input}
 	 * array and stores the result in equivalent output array.
+	 * @param pixelFormat The pixel format
 	 * @param input The input of ARGB int colors
 	 * @param red The output for red channel
 	 * @param green The output for green channel
@@ -112,6 +116,7 @@ public final class Channels {
 	 * them in the given output array. This method converts the input so that
 	 * value of each of red, green, blue and alpha component of the new color is
 	 * that of the value in the input array.
+	 * @param pixelFormat The pixel format
 	 * @param input The input
 	 * @param output The output*/
 	public static final <T extends Buffer> void join(ImagePixelFormat<T> pixelFormat, byte[] input, T output) {
@@ -135,6 +140,7 @@ public final class Channels {
 	 * value of each of red, green and blue component of the new color is that of
 	 * the value in the input array, and value of the alpha component is the same as
 	 * the one that is given.
+	 * @param pixelFormat The pixel format
 	 * @param input The input
 	 * @param output The output
 	 * @param alpha The value of the alpha component of all new colors*/
@@ -161,6 +167,7 @@ public final class Channels {
 	 * value of each of red, green and blue component of the new color is that of
 	 * the value in the respective array, and value of the alpha component is
 	 * the same as the one that is given.
+	 * @param pixelFormat The pixel format
 	 * @param red The red component input
 	 * @param green The green component input
 	 * @param blue The blue component input
@@ -191,6 +198,7 @@ public final class Channels {
 	 * them in the given output array. This method converts the input so that
 	 * value of each of red, green, blue and alpha component of the new color is
 	 * that of the value in the respective array.
+	 * @param pixelFormat The pixel format
 	 * @param red The red component input
 	 * @param green The green component input
 	 * @param blue The blue component input

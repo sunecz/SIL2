@@ -59,7 +59,8 @@ final class InternalChannels<T extends Buffer> {
 	 * the result in the {@code output} array.
 	 * @param input The input of ARGB int colors
 	 * @param output The output
-	 * @param channel The channel to be separated*/
+	 * @param channel The channel to be separated
+	 * @param premultiply If {@code true}, premultiplies the pixels*/
 	public final void separate(T input, byte[] output, InternalColorChannel channel, boolean premultiply) {
 		if((premultiply)) separatePre(input, output, channel);
 		else              separate   (input, output, channel);
@@ -96,7 +97,8 @@ final class InternalChannels<T extends Buffer> {
 	 * and stores the result in the {@code output} array.
 	 * @param input The input of ARGB int colors
 	 * @param output The output
-	 * @param shift The shift of a channel to be separated*/
+	 * @param shift The shift of a channel to be separated
+	 * @param premultiply If {@code true}, premultiplies the pixels*/
 	public final void separate(T input, byte[] output, int shift, boolean premultiply) {
 		if((premultiply)) separatePre(input, output, shift);
 		else              separate   (input, output, shift);
@@ -147,7 +149,8 @@ final class InternalChannels<T extends Buffer> {
 	 * @param red The output for red channel
 	 * @param green The output for green channel
 	 * @param blue The output for blue channel
-	 * @param alpha The output for alpha channel*/
+	 * @param alpha The output for alpha channel
+	 * @param premultiply If {@code true}, premultiplies the pixels*/
 	public final void separate(T input, byte[] red, byte[] green, byte[] blue, byte[] alpha, boolean premultiply) {
 		if((premultiply)) separatePre(input, red, green, blue, alpha);
 		else              separate   (input, red, green, blue, alpha);
@@ -195,7 +198,8 @@ final class InternalChannels<T extends Buffer> {
 	 * value of each of red, green, blue and alpha component of the new color is
 	 * that of the value in the input array.
 	 * @param input The input
-	 * @param output The output*/
+	 * @param output The output
+	 * @param premultiply If {@code true}, premultiplies the pixels*/
 	public final void join(byte[] input, T output, boolean premultiply) {
 		if((premultiply)) joinPre(input, output);
 		else              join   (input, output);
@@ -251,7 +255,8 @@ final class InternalChannels<T extends Buffer> {
 	 * the one that is given.
 	 * @param input The input
 	 * @param output The output
-	 * @param alpha The value of the alpha component of all new colors*/
+	 * @param alpha The value of the alpha component of all new colors
+	 * @param premultiply If {@code true}, premultiplies the pixels*/
 	public final void join(byte[] input, T output, int alpha, boolean premultiply) {
 		if((premultiply)) joinPre(input, output, alpha);
 		else              join   (input, output, alpha);
@@ -311,7 +316,8 @@ final class InternalChannels<T extends Buffer> {
 	 * @param green The green component input
 	 * @param blue The blue component input
 	 * @param output The output
-	 * @param alpha The value of the alpha component of all new colors*/
+	 * @param alpha The value of the alpha component of all new colors
+	 * @param premultiply If {@code true}, premultiplies the pixels*/
 	public final void join(byte[] red, byte[] green, byte[] blue, T output, int alpha, boolean premultiply) {
 		if((premultiply)) joinPre(red, green, blue, output, alpha);
 		else              join   (red, green, blue, output, alpha);
@@ -366,7 +372,8 @@ final class InternalChannels<T extends Buffer> {
 	 * @param green The green component input
 	 * @param blue The blue component input
 	 * @param alpha The alpha component input
-	 * @param output The output*/
+	 * @param output The output
+	 * @param premultiply If {@code true}, premultiplies the pixels*/
 	public final void join(byte[] red, byte[] green, byte[] blue, byte[] alpha, T output, boolean premultiply) {
 		if((premultiply)) joinPre(red, green, blue, alpha, output);
 		else              join   (red, green, blue, alpha, output);

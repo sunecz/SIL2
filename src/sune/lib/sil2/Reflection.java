@@ -18,12 +18,14 @@ final class Reflection {
 	}
 	
 	private static Field FIELD_SET_ACCESSIBLE;
-	private static Field getField_setAccessible()
-			throws NoSuchFieldException,
-				   SecurityException {
+	private static Field getField_setAccessible() {
 		if((FIELD_SET_ACCESSIBLE == null)) {
-			FIELD_SET_ACCESSIBLE = AccessibleObject.class.getDeclaredField("override");
-			unsafe_setFieldValue(FIELD_SET_ACCESSIBLE, FIELD_SET_ACCESSIBLE, true);
+			try {
+				FIELD_SET_ACCESSIBLE = AccessibleObject.class.getDeclaredField("override");
+				unsafe_setFieldValue(FIELD_SET_ACCESSIBLE, FIELD_SET_ACCESSIBLE, true);
+			} catch(NoSuchFieldException | SecurityException ex) {
+				throw new IllegalStateException("Unable to obtain the override field", ex);
+			}
 		}
 		return FIELD_SET_ACCESSIBLE;
 	}
@@ -39,11 +41,13 @@ final class Reflection {
      * calling of this method, the given object should be accessible and ready for further
      * actions requiring accessibility.
      * @param object the object where to set the {@code accessible} flag
-     * @param flag the new value for the {@code accessible} flag*/
+     * @param flag the new value for the {@code accessible} flag
+     * @throws IllegalArgumentException if the specified object is not an instance of the class
+     * or interface declaring the underlyingfield (or a subclass or implementor thereof),
+     * or if an unwrapping conversion fails.
+     * @throws IllegalAccessException if this object cannot be made accessible.*/
 	public static final void setAccessible(AccessibleObject object, boolean flag)
-			throws NoSuchFieldException,
-			       SecurityException,
-			       IllegalArgumentException,
+			throws IllegalArgumentException,
 				   IllegalAccessException {
 		getField_setAccessible().setBoolean(object, true);
 	}

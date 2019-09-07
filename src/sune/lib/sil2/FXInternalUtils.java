@@ -9,6 +9,10 @@ import javafx.scene.image.Image;
 
 final class FXInternalUtils {
 	
+	/* Note that this class must be updated everytime a change happen
+	 * in the Prism Image's class, such as the change with serial number
+	 * in Java 12.*/
+	
 	public static final class PlatformImageWrapper {
 		
 		// Reflection

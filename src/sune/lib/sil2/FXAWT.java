@@ -8,11 +8,26 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
+import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritableImage;
 import javafx.scene.image.WritablePixelFormat;
 
+/**
+ * Contains methods for converting AWT images to JavaFX ones and vice-versa.
+ * This class should be faster than {@linkplain SwingFXUtils} class since it uses
+ * faster techniques to convert images. Also methods in this class try to keep
+ * the internal format of an image, i.e. if the format of an AWT image is
+ * {@link BufferedImage.TYPE_4BYTE_ABGR_PRE TYPE_4BYTE_ABGR_PRE} then
+ * the converted image will have the same format equivalent in JavaFX.
+ * Note that only premultiplied versions of a JavaFX Image can be created
+ * internally, thus making it impossible to obtain non-premultiplied versions
+ * of an AWT image, with the exception of
+ * {@link BufferedImage.TYPE_3BYTE_BGR TYPE_3BYTE_BGR} format.
+ * @see SwingFXUtils
+ * @since 2.0
+ * @author Sune*/
 public final class FXAWT {
 	
 	private static final int UNSUPPORTED_FORMAT = 999;
@@ -98,6 +113,13 @@ public final class FXAWT {
 		}
 	}
 	
+	/**
+	 * Creates a new AWT image from the given JavaFX image, copying all its pixels
+	 * into the newly created image. The internal format of the newly created image
+	 * is based on the given JavaFX image, but the best effort is made so that
+	 * it results into an equivalent format in AWT.
+	 * @param image Image to convert
+	 * @return Converted JavaFX image as an AWT image*/
 	public static final BufferedImage awtImage(Image image) {
 		int width  = (int) image.getWidth();
 		int height = (int) image.getHeight();
@@ -172,6 +194,13 @@ public final class FXAWT {
 		return bimg;
 	}
 	
+	/**
+	 * Creates a new JavaFX image from the given AWT image, copying all its pixels
+	 * into the newly created image. The internal format of the newly created image
+	 * is based on the given AWT image, but the best effort is made so that
+	 * it results into an equivalent format in JavaFX.
+	 * @param image Image to convert
+	 * @return Converted AWT image as an JavaFX image*/
 	public static final WritableImage fxImage(BufferedImage image) {
 		int width  = image.getWidth();
 		int height = image.getHeight();
