@@ -355,7 +355,7 @@ public final class IImage<T extends Buffer> {
 		/**
 		 * Inverts colors of {@code this} image.*/
 		public final void invert() {
-			applyActionRGB((rgb, input, output, i) -> {
+			applyActionRGB((rgb, input, output, i, varStore) -> {
 				rgb[0] = 0xff - rgb[0];
 				rgb[1] = 0xff - rgb[1];
 				rgb[2] = 0xff - rgb[2];
@@ -367,7 +367,7 @@ public final class IImage<T extends Buffer> {
 		 * Formula used:<br>
 		 * {@code 0.299 * R + 0.587 * G + 0.114 * B}.*/
 		public final void grayscale() {
-			applyActionRGB((rgb, input, output, i) -> {
+			applyActionRGB((rgb, input, output, i, varStore) -> {
 				int gray = Colors.f2rgba(0.299f * rgb[0] + 0.587f * rgb[1] + 0.114f * rgb[2]);
 				rgb[0] = gray;
 				rgb[1] = gray;
@@ -380,7 +380,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void brightness(float value) {
 			final float fval = clamp11(value) * F2I;
-			applyActionRGB((rgb, input, output, i) -> {
+			applyActionRGB((rgb, input, output, i, varStore) -> {
 				rgb[0] = Colors.f2rgba(rgb[0] + fval);
 				rgb[1] = Colors.f2rgba(rgb[1] + fval);
 				rgb[2] = Colors.f2rgba(rgb[2] + fval);
@@ -392,7 +392,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void contrast(float value) {
 			final float fval = clamp00(value);
-			applyActionRGB((rgb, input, output, i) -> {
+			applyActionRGB((rgb, input, output, i, varStore) -> {
 				rgb[0] = Colors.f2rgba(fval * (rgb[0] - 128) + 128);
 				rgb[1] = Colors.f2rgba(fval * (rgb[1] - 128) + 128);
 				rgb[2] = Colors.f2rgba(fval * (rgb[2] - 128) + 128);
@@ -404,7 +404,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void gamma(float value) {
 			final float fval = 1.0f / value;
-			applyActionRGB((rgb, input, output, i) -> {
+			applyActionRGB((rgb, input, output, i, varStore) -> {
 				rgb[0] = Colors.f2rgba(FastMath.pow(rgb[0] * I2F, fval) * F2I);
 				rgb[1] = Colors.f2rgba(FastMath.pow(rgb[1] * I2F, fval) * F2I);
 				rgb[2] = Colors.f2rgba(FastMath.pow(rgb[2] * I2F, fval) * F2I);
@@ -416,7 +416,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void alpha(int value) {
 			final int fval = value << 24;
-			applyActionINT((input, output, i) -> {
+			applyActionINT((input, output, i, varStore) -> {
 				format.setARGB(output, i, (format.getARGB(input, i) & 0x00ffffff) | fval);
 			});
 		}
@@ -426,7 +426,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void transparency(float value) {
 			final float fval = clamp01(value);
-			applyActionINT((input, output, i) -> {
+			applyActionINT((input, output, i, varStore) -> {
 				int alpha = (int) ((format.getARGB(input, i) >>> 24) * fval) << 24;
 				format.setARGB(output, i, (format.getARGB(input, i) & 0x00ffffff) | alpha);
 			});
@@ -437,7 +437,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void hue(float value) {
 			final float fval = clamp11(value);
-			applyActionHSL((hsl, input, output, index) -> {
+			applyActionHSL((hsl, input, output, index, varStore) -> {
 				float hue = hsl[0] + fval;
 				if((hue < 0.0f)) hue += 1.0f; else
 				if((hue > 1.0f)) hue -= 1.0f;
@@ -450,7 +450,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void saturation(float value) {
 			final float fval = clamp00(value);
-			applyActionHSL((hsl, input, output, index) -> {
+			applyActionHSL((hsl, input, output, index, varStore) -> {
 				hsl[1] *= fval;
 			});
 		}
@@ -460,7 +460,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void lightness(float value) {
 			final float fval = clamp00(value);
-			applyActionHCL((hcl, input, output, index) -> {
+			applyActionHCL((hcl, input, output, index, varStore) -> {
 				hcl[2] *= fval;
 			});
 		}
@@ -470,7 +470,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void chroma(float value) {
 			final float fval = clamp00(value);
-			applyActionHCL((hcl, input, output, index) -> {
+			applyActionHCL((hcl, input, output, index, varStore) -> {
 				hcl[1] *= fval;
 			});
 		}
@@ -491,7 +491,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void thresholdLWR(int value) {
 			final int fval = clamp02(value);
-			applyActionINT((input, output, i) -> {
+			applyActionINT((input, output, i, varStore) -> {
 				format.setARGB(output, i, (format.getARGB(input, i) & 0xff) <= fval ? 0xffffffff : 0xff000000);
 			});
 		}
@@ -503,7 +503,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void thresholdGRT(int value) {
 			final int fval = clamp02(value);
-			applyActionINT((input, output, i) -> {
+			applyActionINT((input, output, i, varStore) -> {
 				format.setARGB(output, i, (format.getARGB(input, i) & 0xff) >= fval ? 0xffffffff : 0xff000000);
 			});
 		}
@@ -518,7 +518,7 @@ public final class IImage<T extends Buffer> {
 		public final void thresholdBTW(int min, int max) {
 			final int fmin = clamp02(min);
 			final int fmax = clamp02(max);
-			applyActionINT((input, output, i) -> {
+			applyActionINT((input, output, i, varStore) -> {
 				int value = format.getARGB(input, i) & 0xff;
 				format.setARGB(output, i, value >= fmin && value <= fmax ? 0xffffffff : 0xff000000);
 			});
@@ -627,7 +627,7 @@ public final class IImage<T extends Buffer> {
 			int cos = FastMath.round(value * FastMath.cosDeg(angleDeg));
 			int sin = FastMath.round(value * FastMath.sinDeg(angleDeg));
 			int epp = format.getElementsPerPixel();
-			applyActionINT((input, output, index) -> {
+			applyActionINT((input, output, index, varStore) -> {
 				int x = (index / epp) % width, y = (index / epp) / width;
 				int sx = x + cos, sy = y + sin;
 				int ex = x - cos, ey = y - sin;
@@ -697,7 +697,7 @@ public final class IImage<T extends Buffer> {
 		 * @param value The value*/
 		public final void sharpen(float value) {
 			int epp = format.getElementsPerPixel();
-			applyActionRGB((rgb, input, output, index) -> {
+			applyActionRGB((rgb, input, output, index, varStore) -> {
 				int x = (index / epp) % width, y = (index / epp) / width;
 				boolean isl = x > 0, isr = x < width  - 1;
 				boolean ist = y > 0, isb = y < height - 1;
@@ -1226,17 +1226,17 @@ public final class IImage<T extends Buffer> {
 	
 	@FunctionalInterface
 	private static interface ActionINT<T extends Buffer> {
-		void action(T input, T output, int index);
+		void action(T input, T output, int index, VariableStore varStore);
 	}
 	
 	@FunctionalInterface
 	private static interface ActionRGB<T extends Buffer> {
-		void action(int[] rgb, T input, T output, int index);
+		void action(int[] rgb, T input, T output, int index, VariableStore varStore);
 	}
 	
 	@FunctionalInterface
 	private static interface ActionFloat<T extends Buffer> {
-		void action(float[] arr, T input, T output, int index);
+		void action(float[] arr, T input, T output, int index, VariableStore varStore);
 	}
 	
 	@FunctionalInterface
@@ -1282,9 +1282,12 @@ public final class IImage<T extends Buffer> {
 		Object get(int addr);
 	}
 	
-	private static final EmptyVariableStore VAR_STORE_EMPTY = EmptyVariableStore.INSTANCE;
-	private static final RGBVariableStore   VAR_STORE_RGB   = RGBVariableStore.INSTANCE;
-	private static final FloatVariableStore VAR_STORE_FLOAT = FloatVariableStore.INSTANCE;
+	private static final EmptyVariableStore      VAR_STORE_EMPTY       = EmptyVariableStore.INSTANCE;
+	private static final RGBVariableStore        VAR_STORE_RGB         = RGBVariableStore.INSTANCE;
+	private static final FloatVariableStore      VAR_STORE_FLOAT       = FloatVariableStore.INSTANCE;
+	private static final MatrixRGBAVariableStore VAR_STORE_MATRIX_RGBA = MatrixRGBAVariableStore.INSTANCE;
+	private static final MatrixHSLAVariableStore VAR_STORE_MATRIX_HSLA = MatrixHSLAVariableStore.INSTANCE;
+	private static final MatrixHCLAVariableStore VAR_STORE_MATRIX_HCLA = MatrixHCLAVariableStore.INSTANCE;
 	
 	private static final class EmptyVariableStore implements VariableStore {
 		
@@ -1342,6 +1345,82 @@ public final class IImage<T extends Buffer> {
 		}
 	}
 	
+	private static final class MatrixRGBAVariableStore implements VariableStore {
+		
+		public static final MatrixRGBAVariableStore INSTANCE = new MatrixRGBAVariableStore();
+		
+		private float[] mtx;
+		private int  [] rgb;
+		
+		@Override
+		public VariableStore copy() {
+			return new MatrixRGBAVariableStore();
+		}
+		
+		@Override
+		public void prepare() {
+			mtx = new float[4];
+			rgb = new int  [4];
+		}
+		
+		@Override
+		public Object get(int addr) {
+			return addr == 0 ? rgb : mtx;
+		}
+	}
+	
+	private static final class MatrixHSLAVariableStore implements VariableStore {
+		
+		public static final MatrixHSLAVariableStore INSTANCE = new MatrixHSLAVariableStore();
+		
+		private float[] mtx;
+		private float[] arr;
+		private int  [] rgb;
+		
+		@Override
+		public VariableStore copy() {
+			return new MatrixHSLAVariableStore();
+		}
+		
+		@Override
+		public void prepare() {
+			mtx = new float[4];
+			arr = new float[4];
+			rgb = new int  [3];
+		}
+		
+		@Override
+		public Object get(int addr) {
+			return addr == 0 ? rgb : addr == 1 ? arr : mtx;
+		}
+	}
+	
+	private static final class MatrixHCLAVariableStore implements VariableStore {
+		
+		public static final MatrixHCLAVariableStore INSTANCE = new MatrixHCLAVariableStore();
+		
+		private float[] mtx;
+		private float[] arr;
+		private int  [] rgb;
+		
+		@Override
+		public VariableStore copy() {
+			return new MatrixHCLAVariableStore();
+		}
+		
+		@Override
+		public void prepare() {
+			mtx = new float[4];
+			arr = new float[4];
+			rgb = new int  [3];
+		}
+		
+		@Override
+		public Object get(int addr) {
+			return addr == 0 ? rgb : addr == 1 ? arr : mtx;
+		}
+	}
+	
 	private final void applyThreadedAction(T input, T output, VariableStore varStore, ThreadedAction<T> action) {
 		final CounterLock lock = new CounterLock();
 		int epp = format.getElementsPerPixel();
@@ -1382,12 +1461,12 @@ public final class IImage<T extends Buffer> {
 	
 	private final void applyActionINT(T input, T output, ActionINT<T> action) {
 		applyThreadedAction(input, output, VAR_STORE_EMPTY, (i, epp, varStore) -> {
-			action.action(input, output, i * epp);
+			action.action(input, output, i * epp, varStore);
 		});
 	}
 	
-	private final void applyActionRGB(T input, T output, ActionRGB<T> action) {
-		applyThreadedAction(input, output, VAR_STORE_RGB, (i, epp, varStore) -> {
+	private final void applyActionRGB(T input, T output, ActionRGB<T> action, VariableStore mainVarStore) {
+		applyThreadedAction(input, output, mainVarStore, (i, epp, varStore) -> {
 			int argb; // Variable declarations
 			int[] rgb = (int[]) varStore.get(0);
 			argb   = format.getARGB(input, i * epp);
@@ -1395,7 +1474,7 @@ public final class IImage<T extends Buffer> {
 			rgb[1] = (argb >>  8) & 0xff;
 			rgb[2] = (argb)       & 0xff;
 			rgb[3] = (argb >> 24) & 0xff;
-			action.action(rgb, input, output, i * epp);
+			action.action(rgb, input, output, i * epp, varStore);
 			format.setPixel(output, i * epp,
 			                clamp02(rgb[0]),
 			                clamp02(rgb[1]),
@@ -1404,10 +1483,21 @@ public final class IImage<T extends Buffer> {
 		});
 	}
 	
+	private final void applyActionRGB(T input, T output, ActionRGB<T> action) {
+		applyActionRGB(input, output, action, VAR_STORE_RGB);
+	}
+	
 	private final void applyActionFloat(T input, T output, ActionFloat<T> action,
 			ConversionAction<int[], float[]> convForward,
 			ConversionAction<float[], int[]> convInverse) {
-		applyThreadedAction(input, output, VAR_STORE_FLOAT, (i, epp, varStore) -> {
+		applyActionFloat(input, output, action, convForward, convInverse, VAR_STORE_FLOAT);
+	}
+	
+	private final void applyActionFloat(T input, T output, ActionFloat<T> action,
+			ConversionAction<int[], float[]> convForward,
+			ConversionAction<float[], int[]> convInverse,
+			VariableStore mainVarStore) {
+		applyThreadedAction(input, output, mainVarStore, (i, epp, varStore) -> {
 			int argb, alpha; // Variable declarations
 			float[] arr = (float[]) varStore.get(1);
 			int[]   rgb = (int[])   varStore.get(0);
@@ -1417,7 +1507,7 @@ public final class IImage<T extends Buffer> {
 			rgb[2] = (argb)       & 0xff;
 			convForward.convert(rgb, arr);
 			arr[3] = ((argb >> 24) & 0xff) * I2F;
-			action.action(arr, input, output, i * epp);
+			action.action(arr, input, output, i * epp, varStore);
 			convInverse.convert(arr, rgb);
 			alpha = FastMath.round(arr[3] * F2I);
 			format.setPixel(output, i * epp,
@@ -1426,6 +1516,24 @@ public final class IImage<T extends Buffer> {
 			                clamp02(rgb[2]),
 			                clamp02(alpha));
 		});
+	}
+	
+	private final void applyActionRGBAMatrix(T input, T output, ActionRGB<T> action) {
+		applyActionRGB(input, output, action, VAR_STORE_MATRIX_RGBA);
+	}
+	
+	private final void applyActionHSLAMatrix(T input, T output, ActionFloat<T> action) {
+		applyActionFloat(pixels, buffer, action,
+			(rgb, hsl) -> Colors.rgb2hsl(rgb[0], rgb[1], rgb[2], hsl),
+			(hsl, rgb) -> Colors.hsl2rgb(hsl[0], hsl[1], hsl[2], rgb),
+			VAR_STORE_MATRIX_HSLA);
+	}
+	
+	private final void applyActionHCLAMatrix(T input, T output, ActionFloat<T> action) {
+		applyActionFloat(pixels, buffer, action,
+			(rgb, hcl) -> Colors.rgb2hcl(rgb[0], rgb[1], rgb[2], hcl),
+			(hcl, rgb) -> Colors.hcl2rgb(hcl[0], hcl[1], hcl[2], rgb),
+			VAR_STORE_MATRIX_HCLA);
 	}
 	
 	private final void applyActionINT(ActionINT<T> action) {
@@ -1452,20 +1560,19 @@ public final class IImage<T extends Buffer> {
 		swapBuffer();
 	}
 	
-	private final int matrixMultiplyRGBA(Matrix4f matrix, int r, int g, int b, int a) {
-		float[] result = matrix.multiply(r, g, b, a);
-		return Colors.rgba(Colors.f2rgba(result[0]),
-		                   Colors.f2rgba(result[1]),
-		                   Colors.f2rgba(result[2]),
-		                   Colors.f2rgba(result[3]));
+	private final void applyActionRGBAMatrix(ActionRGB<T> action) {
+		applyActionRGBAMatrix(pixels, buffer, action);
+		swapBuffer();
 	}
 	
-	private final int matrixMultiplyHSLA(Matrix4f matrix, float h, float s, float l, float a) {
-		float[] result = matrix.multiply(h, s, l, a);
-		return Colors.hsla(Colors.f2hsla(result[0]),
-		                   Colors.f2hsla(result[1]),
-		                   Colors.f2hsla(result[2]),
-		                   Colors.f2hsla(result[3]));
+	private final void applyActionHSLAMatrix(ActionFloat<T> action) {
+		applyActionHSLAMatrix(pixels, buffer, action);
+		swapBuffer();
+	}
+	
+	private final void applyActionHCLAMatrix(ActionFloat<T> action) {
+		applyActionHCLAMatrix(pixels, buffer, action);
+		swapBuffer();
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -1495,8 +1602,13 @@ public final class IImage<T extends Buffer> {
 	 * Applies the given RGBA matrix to {@code this} image.
 	 * @param matrix The matrix*/
 	public final void applyRGBAMatrix(Matrix4f matrix) {
-		applyActionRGB((rgb, input, output, i) -> {
-			format.setARGB(output, i, matrixMultiplyRGBA(matrix, rgb[0], rgb[1], rgb[2], rgb[3]));
+		applyActionRGBAMatrix((rgb, input, output, i, varStore) -> {
+			float[] mtx = (float[]) varStore.get(1);
+			matrix.multiply(rgb[0], rgb[1], rgb[2], rgb[3], mtx);
+			rgb[0] = Colors.f2rgba(mtx[0]);
+			rgb[1] = Colors.f2rgba(mtx[1]);
+			rgb[2] = Colors.f2rgba(mtx[2]);
+			rgb[3] = Colors.f2rgba(mtx[3]);
 		});
 	}
 	
@@ -1504,8 +1616,27 @@ public final class IImage<T extends Buffer> {
 	 * Applies the given HSLA matrix to {@code this} image.
 	 * @param matrix The matrix*/
 	public final void applyHSLAMatrix(Matrix4f matrix) {
-		applyActionHSL((hsl, input, output, i) -> {
-			format.setARGB(output, i, matrixMultiplyHSLA(matrix, hsl[0], hsl[1], hsl[2], hsl[3]));
+		applyActionHSLAMatrix((hsl, input, output, i, varStore) -> {
+			float[] mtx = (float[]) varStore.get(2);
+			matrix.multiply(hsl[0], hsl[1], hsl[2], hsl[3], mtx);
+			hsl[0] = Colors.f2hsla(mtx[0]);
+			hsl[1] = Colors.f2hsla(mtx[1]);
+			hsl[2] = Colors.f2hsla(mtx[2]);
+			hsl[3] = Colors.f2hsla(mtx[3]);
+		});
+	}
+	
+	/**
+	 * Applies the given HCLA matrix to {@code this} image.
+	 * @param matrix The matrix*/
+	public final void applyHCLAMatrix(Matrix4f matrix) {
+		applyActionHCLAMatrix((hcl, input, output, i, varStore) -> {
+			float[] mtx = (float[]) varStore.get(2);
+			matrix.multiply(hcl[0], hcl[1], hcl[2], hcl[3], mtx);
+			hcl[0] = mtx[0];
+			hcl[1] = mtx[1];
+			hcl[2] = mtx[2];
+			hcl[3] = mtx[3];
 		});
 	}
 	
@@ -1513,7 +1644,7 @@ public final class IImage<T extends Buffer> {
 	 * Applies the given mask to {@code this} image.
 	 * @param mask The mask*/
 	public final void applyMask(int mask) {
-		applyActionINT((input, output, i) -> {
+		applyActionINT((input, output, i, varStore) -> {
 			format.setARGB(output, i, format.getARGB(input, i) & mask);
 		});
 	}
@@ -1605,7 +1736,7 @@ public final class IImage<T extends Buffer> {
 	/**
 	 * Converts all the pixels of {@code this} image to premultiplied version.*/
 	public final void toPremultipliedAlpha() {
-		applyActionINT((input, output, index) -> {
+		applyActionINT((input, output, index, varStore) -> {
 			format.setARGB(output, index, Colors.linear2premult(format.getARGB(input, index)));
 		});
 	}
@@ -1613,7 +1744,7 @@ public final class IImage<T extends Buffer> {
 	/**
 	 * Converts all the pixels of {@code this} image to linear version.*/
 	public final void toLinearAlpha() {
-		applyActionINT((input, output, index) -> {
+		applyActionINT((input, output, index, varStore) -> {
 			format.setARGB(output, index, Colors.premult2linear(format.getARGB(input, index)));
 		});
 	}
