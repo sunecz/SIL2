@@ -54,7 +54,7 @@ package sune.lib.sil2;
  * <a href="https://github.com/apache/commons-math/blob/master/src/main/java/org/apache/commons/math4/util/FastMath.java">
  *     https://github.com/apache/commons-math/blob/master/src/main/java/org/apache/commons/math4/util/FastMath.java
  * </a>
- * @version 1.0.0
+ * @version 1.0
  * @author Riven
  * @author jMonkeyEngine
  * @author fishrock123
@@ -64,7 +64,7 @@ package sune.lib.sil2;
  * @see Math*/
 public final class FastMath {
 	
-	// constants
+	// Constants
 	/**
      * The {@code float} value that is closer than any other to
      * <i>pi</i>, the ratio of the circumference of a circle to its
@@ -75,7 +75,7 @@ public final class FastMath {
      * <i>e</i>, the base of the natural logarithms.*/
 	public static final float E  = (float) StrictMath.E;
 	
-	// angles
+	// Angles
 	/**
 	 * Represents the value of angle {@code 360deg} in radians, that is {@code 2.0*PI}.*/
 	public static final float ANGLE_360 = 2.0f * PI;
@@ -89,7 +89,7 @@ public final class FastMath {
 	 * Represents the value of angle {@code 90deg} in radians, that is {@code 0.5*PI}.*/
 	public static final float ANGLE_90  = 0.5f * PI;
 	
-	// atan2
+	// Function: atan2
 	private static final int     SIZE            = 1024;
 	private static final int     EZIS            = -SIZE;
 	private static final float   STRETCH         = PI;
@@ -102,7 +102,7 @@ public final class FastMath {
 	private static final float[] ATAN2_TABLE_NNY = new float[SIZE + 1];
 	private static final float[] ATAN2_TABLE_NNX = new float[SIZE + 1];
 	
-	// sin, cos & tan
+	// Function: sin, cos & tan
 	private static final int     TRG_BITS       = 12;
 	private static final int     TRG_MASK       = ~(-1 << TRG_BITS);
 	private static final int     TRG_COUNT      = TRG_MASK + 1;
@@ -114,7 +114,7 @@ public final class FastMath {
 	private static final float[] COS            = new float[TRG_COUNT];
 	private static final float[] TAN            = new float[TRG_COUNT];
 	
-	// floor, round & ceil
+	// Function: floor, round & ceil
 	private static final int   BIG_ENOUGH_INT   = 16 * 1024;
 	private static final float BIG_ENOUGH_FLOOR = BIG_ENOUGH_INT;
 	private static final float BIG_ENOUGH_ROUND = BIG_ENOUGH_INT + 0.5f;
@@ -142,7 +142,7 @@ public final class FastMath {
 		for(int i = 0; i < 360; i += 90) {
 			SIN[(int) (i * TRG_degToIndex) & TRG_MASK] = (float) Math.sin(i * Math.PI / 180.0);
 			COS[(int) (i * TRG_degToIndex) & TRG_MASK] = (float) Math.cos(i * Math.PI / 180.0);
-			TAN[(int) (i * TRG_degToIndex) & TRG_MASK] = (float) Math.cos(i * Math.PI / 180.0);
+			TAN[(int) (i * TRG_degToIndex) & TRG_MASK] = (float) Math.tan(i * Math.PI / 180.0);
 		}
 	}
 	
@@ -428,8 +428,8 @@ public final class FastMath {
      * @return  the absolute value of the argument.
      * @see Math#abs(float)
      */
-	public static final float abs(float x) {
-		return Float.intBitsToFloat(0x7fffffff & Float.floatToRawIntBits(x));
+	public static final float abs(float a) {
+		return Float.intBitsToFloat(0x7fffffff & Float.floatToRawIntBits(a));
 	}
 	
 	/**
@@ -462,21 +462,21 @@ public final class FastMath {
      * @return {@code f} &times; 2<sup>{@code scaleFactor}</sup>
      * @see Math#scalb(float, int)
      */
-	public static final float scalb(float f, int n) {
-		if((n > -127) && (n < 128))
-			return f * Float.intBitsToFloat((n + 127) << 23);
+	public static final float scalb(float f, int scaleFactor) {
+		if((scaleFactor > -127) && (scaleFactor < 128))
+			return f * Float.intBitsToFloat((scaleFactor + 127) << 23);
 		if((Float.isNaN(f) || Float.isInfinite(f) || (f == 0.0f)))
 			return f;
-		if((n < -277))
+		if((scaleFactor < -277))
 			return (f > 0) ? 0.0f : -0.0f;
-		if((n > 276))
+		if((scaleFactor > 276))
 			return (f > 0) ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY;
 		final int bits = Float.floatToIntBits(f);
 		final int sign = bits & 0x80000000;
 		int exponent   = (bits >>> 23) & 0xff;
 		int mantissa   = bits & 0x007fffff;
-		int scaledExponent = exponent + n;
-		if((n < 0)) {
+		int scaledExponent = exponent + scaleFactor;
+		if((scaleFactor < 0)) {
 			if((scaledExponent > 0))
 				return Float.intBitsToFloat(sign | (scaledExponent << 23) | mantissa);
 			if((scaledExponent > -24)) {

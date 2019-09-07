@@ -111,8 +111,16 @@ public final class Colors {
 		return t > 0.206897f ? FastMath.pow(t, 3.0f) : 0.128419f * (t - 0.137931f);
 	}
 	
-	// r, g, b are in range <0, 1>
-	// x, y, z are in range <0, 1>
+	/**
+	 * Converts the given RGB color to an XYZ color and stores the result
+	 * in the given array {@code xyz}. All components of XYZ color
+	 * are in range {@code 0} - {@code 1}.
+	 * @param r The red component of a color, in range {@code 0} - {@code 1}
+	 * @param g The green component of a color, in range {@code 0} - {@code 1}
+	 * @param b The blue component of a color, in range {@code 0} - {@code 1}
+	 * @param xyz Array where the result is stored
+	 * @since 2.0
+	 * @author Sune*/
 	public static final void rgb2xyz(float r, float g, float b, float[] xyz) {
 		// https://en.wikipedia.org/wiki/SRGB
 		xyz[0] = 0.4124f * r + 0.3576f * g + 0.1805f * b;
@@ -120,6 +128,15 @@ public final class Colors {
 		xyz[2] = 0.0193f * r + 0.1192f * g + 0.9504f * b;
 	}
 	
+	/**
+	 * Converts the given XYZ color to an LAB color and stores the result
+	 * in the given array {@code lab}.
+	 * @param x The X component of a color
+	 * @param y The Y component of a color
+	 * @param z The Z component of a color
+	 * @param lab Array where the result is stored
+	 * @since 2.0
+	 * @author Sune*/
 	public static final void xyz2lab(float x, float y, float z, float[] lab) {
 		// // https://en.wikipedia.org/wiki/CIELAB_color_space
 		float fx = func_xyz2lab(x / _xR);
@@ -130,6 +147,15 @@ public final class Colors {
 		lab[2] = 200.0f * (fy - fz);
 	}
 	
+	/**
+	 * Converts the given LAB color to an LCH color and stores the result
+	 * in the given array {@code lch}.
+	 * @param l The L component of a color
+	 * @param a The A component of a color
+	 * @param b The B component of a color
+	 * @param lch Array where the result is stored
+	 * @since 2.0
+	 * @author Sune*/
 	public static final void lab2lch(float l, float a, float b, float[] lch) {
 		lch[0] = l;
 		lch[1] = (float) Math.hypot(a, b);
@@ -137,21 +163,35 @@ public final class Colors {
 	}
 	
 	/**
-	 * Experimental method, pending documentation.
-	 * @experimental
+	 * Converts the given RGB color to an HCL color and stores the result
+	 * in the given array {@code hcl}.
+	 * @param r The red component of a color, in range {@code 0} - {@code 255}
+	 * @param g The green component of a color, in range {@code 0} - {@code 255}
+	 * @param b The blue component of a color, in range {@code 0} - {@code 255}
+	 * @param hcl Array where the result is stored
+	 * @since 2.0
 	 * @author Sune*/
-	public static final void rgb2hcl(int r, int g, int b, float[] result) {
+	public static final void rgb2hcl(int r, int g, int b, float[] hcl) {
 		float[] xyz = new float[3];
 		float[] lab = new float[3];
 		float[] lch = new float[3];
 		rgb2xyz(r * I2F, g * I2F, b * I2F, xyz);
 		xyz2lab(xyz[0],  xyz[1],  xyz[2],  lab);
 		lab2lch(lab[0],  lab[1],  lab[2],  lch);
-		result[0] = lch[2];
-		result[1] = lch[1];
-		result[2] = lch[0];
+		hcl[0] = lch[2];
+		hcl[1] = lch[1];
+		hcl[2] = lch[0];
 	}
 	
+	/**
+	 * Converts the given LCH color to an LAB color and stores the result
+	 * in the given array {@code lab}.
+	 * @param l The lightness component of a color
+	 * @param c The chroma component of a color
+	 * @param h The hue component of a color
+	 * @param lab Array where the result is stored
+	 * @since 2.0
+	 * @author Sune*/
 	public static final void lch2lab(float l, float c, float h, float[] lab) {
 		float a = c * (float) Math.cos(h);
 		float b = c * (float) Math.sin(h);
@@ -160,6 +200,15 @@ public final class Colors {
 		lab[2] = b;
 	}
 	
+	/**
+	 * Converts the given LAB color to an XYZ color and stores the result
+	 * in the given array {@code xyz}.
+	 * @param l The L component of a color
+	 * @param a The A component of a color
+	 * @param b The B component of a color
+	 * @param xyz Array where the result is stored
+	 * @since 2.0
+	 * @author Sune*/
 	public static final void lab2xyz(float l, float a, float b, float[] xyz) {
 		// https://en.wikipedia.org/wiki/CIELAB_color_space
 		float fy = (l + 16.0f) / 116.0f;
@@ -170,8 +219,16 @@ public final class Colors {
 		xyz[2] = _zR * func_lab2xyz(fy - fz);
 	}
 	
-	// r, g, b are in range <0, 1>
-	// x, y, z are in range <0, 1>
+	/**
+	 * Converts the given XYZ color to an RGB color and stores the result
+	 * in the given array {@code rgb}. All components of RGB color
+	 * are in range {@code 0} - {@code 1}.
+	 * @param x The X component of a color, in range {@code 0} - {@code 1}
+	 * @param y The Y component of a color, in range {@code 0} - {@code 1}
+	 * @param z The Z component of a color, in range {@code 0} - {@code 1}
+	 * @param rgb Array where the result is stored
+	 * @since 2.0
+	 * @author Sune*/
 	public static final void xyz2rgb(float x, float y, float z, float[] rgb) {
 		// https://en.wikipedia.org/wiki/SRGB
 		rgb[0] =  3.2406f * x - 1.5372f * y - 0.4986f * z;
@@ -180,19 +237,25 @@ public final class Colors {
 	}
 	
 	/**
-	 * Experimental method, pending documentation.
-	 * @experimental
+	 * Converts the given HCL color to an RGB color and stores the result
+	 * in the given array {@code hcl}. All components of RGB color
+	 * are in range {@code 0} - {@code 255}.
+	 * @param h The hue component of a color, in range {@code 0} - {@code 1}
+	 * @param c The chroma component of a color, in range {@code 0} - {@code 1}
+	 * @param l The lightness component of a color, in range {@code 0} - {@code 1}
+	 * @param rgb Array where the result is stored
+	 * @since 2.0
 	 * @author Sune*/
-	public static final void hcl2rgb(float h, float c, float l, int[] result) {
+	public static final void hcl2rgb(float h, float c, float l, int[] rgb) {
 		float[] lab = new float[3];
 		float[] xyz = new float[3];
-		float[] rgb = new float[3];
+		float[] res = new float[3];
 		lch2lab(l,      c,      h,      lab);
 		lab2xyz(lab[0], lab[1], lab[2], xyz);
-		xyz2rgb(xyz[0], xyz[1], xyz[2], rgb);
-		result[0] = FastMath.round(rgb[0] * F2I);
-		result[1] = FastMath.round(rgb[1] * F2I);
-		result[2] = FastMath.round(rgb[2] * F2I);
+		xyz2rgb(xyz[0], xyz[1], xyz[2], res);
+		rgb[0] = FastMath.round(res[0] * F2I);
+		rgb[1] = FastMath.round(res[1] * F2I);
+		rgb[2] = FastMath.round(res[2] * F2I);
 	}
 	
 	/**
@@ -366,6 +429,10 @@ public final class Colors {
 		return (int) value;
 	}
 	
+	/**
+	 * Clamps the given integer value to an int value in range {@code 0} - {@code 255}.
+	 * @param value The value
+	 * @return The clamped value*/
 	public static final int i2rgba(int value) {
 		if((value <= 0x00)) return 0x00;
 		if((value >= 0xff)) return 0xff;
@@ -426,6 +493,11 @@ public final class Colors {
 	 * {@code MAX = sqrt((4 * 255)^2 + (4 * 255)^2) = ~1442.497834}.*/
 	private static final float SOBEL_MAX_MAGNITUDE = 1442.5f;
 	
+	/**
+	 * Get a sobel value from the given X and Y coordinates.
+	 * @param x The x coordinate
+	 * @param y The y coordinate
+	 * @return The sobel value*/
 	public static final int sobelXY(float x, float y) {
 		return sobel(FastMath.atan2(y, x), FastMath.hypot(y, x) / SOBEL_MAX_MAGNITUDE);
 	}
@@ -489,6 +561,14 @@ public final class Colors {
 			   (b  << SHIFT_B);
 	}
 	
+	/**
+	 * Converts an RGBA color from linear alpha to premultiplied alpha and stores
+	 * the result in the given array {@code result}.
+	 * @param r The red component of a color
+	 * @param g The green component of a color
+	 * @param b The blue component of a color
+	 * @param a The alpha component of a color
+	 * @param result Array where the result is stored*/
 	public static final void linear2premult(int r, int g, int b, int a, byte[] result) {
 		result[0] = (byte) FastMath.div255(r * a);
 		result[1] = (byte) FastMath.div255(g * a);
@@ -513,6 +593,14 @@ public final class Colors {
 			   (b  << SHIFT_B);
 	}
 	
+	/**
+	 * Converts an RGBA color from premultiplied alpha to linear alpha and stores
+	 * the result in the given array {@code result}.
+	 * @param r The red component of a color
+	 * @param g The green component of a color
+	 * @param b The blue component of a color
+	 * @param a The alpha component of a color
+	 * @param result Array where the result is stored*/
 	public static final void premult2linear(int r, int g, int b, int a, byte[] result) {
 		if((a == 0x0)) {
 			result[0] = result[1] = result[2] = result[3] = 0;
@@ -533,6 +621,14 @@ public final class Colors {
 			   ((b & 0xff) << SHIFT_B);
 	}
 	
+	/**
+	 * Converts a color, given by the red, green and blue components,
+	 * to an int. The result is an ARGB int with 8-bit depth per component
+	 * with {@code 255} as value of the alpha component.
+	 * @param r The red component of a color, in range {@code 0} - {@code 255}
+	 * @param g The green component of a color, in range {@code 0} - {@code 255}
+	 * @param b The blue component of a color, in range {@code 0} - {@code 255}
+	 * @return The ARGB int representation of the given color*/
 	public static final int rgb(int r, int g, int b) {
 		return rgba(r, g, b, 0xff);
 	}

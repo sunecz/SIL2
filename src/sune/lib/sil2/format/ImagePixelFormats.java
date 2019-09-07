@@ -47,6 +47,30 @@ public final class ImagePixelFormats {
 		return from(NativeImage.getNativePixelFormat());
 	}
 	
+	// ----- Image pixel formats' instances
+	
+	public static final ARGBImagePixelFormat getARGBInstance() {
+		return ARGBImagePixelFormat.INSTANCE;
+	}
+	
+	public static final ARGBPreImagePixelFormat getARGBPreInstance() {
+		return ARGBPreImagePixelFormat.INSTANCE;
+	}
+	
+	public static final BGRAImagePixelFormat getBGRAInstance() {
+		return BGRAImagePixelFormat.INSTANCE;
+	}
+	
+	public static final BGRAPreImagePixelFormat getBGRAPreInstance() {
+		return BGRAPreImagePixelFormat.INSTANCE;
+	}
+	
+	public static final RGBImagePixelFormat getRGBInstance() {
+		return RGBImagePixelFormat.INSTANCE;
+	}
+	
+	// -----
+	
 	public static final <S extends Buffer, D extends Buffer> D convert
 			(S src, ImagePixelFormat<S> srcFormat,
 			 ImagePixelFormat<D> dstFormat,

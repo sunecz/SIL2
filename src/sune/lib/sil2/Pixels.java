@@ -29,7 +29,8 @@ public final class Pixels {
 	 * @param dstStride the distance between the first pixel of a row and the pixel
 	 * on the next row (aka the width of the destination image where the pixels are copied to)
 	 * @param width region's width
-	 * @param height region's height*/
+	 * @param height region's height
+	 * @param epp The number of elements per pixel*/
 	public static final void copy(Buffer src, int srcx, int srcy, int srcStride, Buffer dst, int dstx,
 			int dsty, int dstStride, int width, int height, int epp) {
 		// Since the width is always the same and since the pixels are stored

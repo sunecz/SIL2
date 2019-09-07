@@ -10,6 +10,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
@@ -22,6 +23,8 @@ import sune.lib.sil2.format.ImageFormat;
 /**
  * Class containing methods for saving images.*/
 public final class ImageSaver {
+	
+	private static final OpenOption[] OPEN_OPTIONS = { StandardOpenOption.CREATE, StandardOpenOption.WRITE };
 	
 	// Forbid anyone to create an instance of this class
 	private ImageSaver() {
@@ -46,7 +49,7 @@ public final class ImageSaver {
 	 * @return {@code true}, if successfully written, otherwise {@code false}
 	 * @throws IOException if an I/O error occurs.*/
 	public static final boolean save(Image image, ImageFormat format, Path file) throws IOException {
-		return save(image, format, Files.newOutputStream(file, StandardOpenOption.CREATE, StandardOpenOption.WRITE));
+		return save(image, format, new BufferedOutputStream(Files.newOutputStream(file, OPEN_OPTIONS)));
 	}
 	
 	/**

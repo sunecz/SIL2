@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
@@ -18,6 +19,8 @@ import javafx.scene.image.Image;
 /**
  * Class containing methods for opening images.*/
 public final class ImageOpener {
+	
+	private static final OpenOption[] OPEN_OPTIONS = { StandardOpenOption.READ };
 	
 	// Forbid anyone to create an instance of this class
 	private ImageOpener() {
@@ -38,7 +41,7 @@ public final class ImageOpener {
 	 * @return The image represented in the given file
 	 * @throws IOException if an I/O error occurs.*/
 	public static final Image open(Path file) throws IOException {
-		return open(Files.newInputStream(file, StandardOpenOption.READ));
+		return open(new BufferedInputStream(Files.newInputStream(file, OPEN_OPTIONS)));
 	}
 	
 	/**

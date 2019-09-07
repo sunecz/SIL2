@@ -2,6 +2,10 @@ package sune.lib.sil2;
 
 import java.lang.reflect.Method;
 
+/**
+ * A utility class for getting current FPS in the JavaFX Platform.
+ * @since 2.0
+ * @author Sune*/
 public final class FPSUtils {
 	
 	private static Object toolkit;
@@ -44,6 +48,10 @@ public final class FPSUtils {
 		return (float) method.invoke(performanceTracker);
 	}
 	
+	/**
+	 * Gets the current FPS.<br>
+	 * Note that this method uses an internal API of the JavaFX Toolkit.
+	 * @return The FPS*/
 	public static final float getFPS() {
 		try {
 			return getInstantFPS(ensureToolkit());

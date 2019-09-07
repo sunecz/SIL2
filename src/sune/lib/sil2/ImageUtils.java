@@ -41,6 +41,10 @@ public final class ImageUtils {
 	
 	// ----- IMAGE PIXELS
 	
+	/**
+	 * Gets the underlying buffer containing all pixels of the given image.
+	 * @param image The image
+	 * @return The pixels as a buffer*/
 	public static final <T extends Buffer> Buffer getPixels(Image image) {
 		return FXInternalUtils.getPlatformImageWrapper(image).bufferRewind();
 	}
@@ -272,7 +276,8 @@ public final class ImageUtils {
 	 * @param srch The source height
 	 * @param dst The destination array
 	 * @param dstw The destination width
-	 * @param dsth The destination height*/
+	 * @param dsth The destination height
+	 * @param format The pixel format*/
 	// https://web.archive.org/web/20170809062128/http://willperone.net/Code/codescaling.php
 	public static final <T extends Buffer> void fastresize(T src, int srcw, int srch, T dst, int dstw, int dsth,
 			ImagePixelFormat<T> format) {
@@ -334,6 +339,7 @@ public final class ImageUtils {
 	 * @param width The image width
 	 * @param height The image height
 	 * @param angle The angle of rotation
+	 * @param format The pixel format
 	 * @return The wrapper object of the rotated image*/
 	public static final <T extends Buffer> ImageData fastrotate(T pixels, int width, int height, float angle,
 			ImagePixelFormat<T> format) {
@@ -403,7 +409,8 @@ public final class ImageUtils {
 	/**
 	 * Fills the given pixels array with the given color.
 	 * @param pixels The pixels array
-	 * @param color The color*/
+	 * @param color The color
+	 * @param format The pixel format*/
 	public static final void fill(Buffer pixels, int color, ImagePixelFormat<?> format) {
 		BufferUtils.fill(pixels, color, format.getElementsPerPixel());
 	}
@@ -437,7 +444,8 @@ public final class ImageUtils {
 	 * @param dsty The y-coordinate of the destination area
 	 * @param dstw The width of the destination area
 	 * @param dsth The height of the destination area
-	 * @param dstStride The destination's stride*/
+	 * @param dstStride The destination's stride
+	 * @param epp The number of elements per pixel*/
 	public static final void repeat(Buffer src, int srcx, int srcy, int srcw, int srch, int srcStride,
 			Buffer dst, int dstx, int dsty, int dstw, int dsth, int dstStride, int epp) {
 		if((src == null)) throw new NullPointerException("Invalid source array");
@@ -723,7 +731,8 @@ public final class ImageUtils {
 	 * Flips the given pixels, of the given width and height, horizontally.
 	 * @param pixels The pixels
 	 * @param width The width
-	 * @param height The height*/
+	 * @param height The height
+	 * @param format The pixel format*/
 	public static final <T extends Buffer> void flipHorizontal(T pixels, int width, int height,
 			ImagePixelFormat<T> format) {
 		if((pixels == null)) throw new NullPointerException("Invalid pixels array");
@@ -752,7 +761,8 @@ public final class ImageUtils {
 	 * Flips the given pixels, of the given width and height, vertically.
 	 * @param pixels The pixels
 	 * @param width The width
-	 * @param height The height*/
+	 * @param height The height
+	 * @param format The pixel format*/
 	public static final <T extends Buffer> void flipVertical(T pixels, int width, int height,
 			ImagePixelFormat<T> format) {
 		if((pixels == null)) throw new NullPointerException("Invalid pixels array");
@@ -775,13 +785,14 @@ public final class ImageUtils {
 	 * Flips the given pixels, of the given width and height, to the left.
 	 * @param pixels The pixels
 	 * @param width The width
-	 * @param height The height*/
+	 * @param height The height
+	 * @param format The pixel format*/
 	public static final <T extends Buffer> void flipLeft(T pixels, int width, int height,
 			ImagePixelFormat<T> format) {
 		if((pixels == null)) throw new NullPointerException("Invalid pixels array");
 		if((width <= 0 || height <= 0 || pixels.capacity() % (width * height) != 0))
 			throw new IllegalArgumentException("Invalid size");
-		T copy = BufferUtils.copy(pixels, format);
+		T copy = BufferUtils.copy(pixels);
 		int epp = format.getElementsPerPixel();
 		for(int x = width, y = height, i = 0, l = pixels.capacity() / epp, k = l - height, a = l + 1;;) {
 			format.setARGB(pixels, k * epp, copy, i * epp);
@@ -800,13 +811,14 @@ public final class ImageUtils {
 	 * Flips the given pixels, of the given width and height, to the right.
 	 * @param pixels The pixels
 	 * @param width The width
-	 * @param height The height*/
+	 * @param height The height
+	 * @param format The pixel format*/
 	public static final <T extends Buffer> void flipRight(T pixels, int width, int height,
 			ImagePixelFormat<T> format) {
 		if((pixels == null)) throw new NullPointerException("Invalid pixels array");
 		if((width <= 0 || height <= 0 || pixels.capacity() % (width * height) != 0))
 			throw new IllegalArgumentException("Invalid size");
-		T copy = BufferUtils.copy(pixels, format);
+		T copy = BufferUtils.copy(pixels);
 		int epp = format.getElementsPerPixel();
 		for(int x = width, y = height, i = 0, l = pixels.capacity() / epp, k = height - 1, a = -l - 1;;) {
 			format.setARGB(pixels, k * epp, copy, i * epp);
@@ -894,7 +906,8 @@ public final class ImageUtils {
 	 * method.
 	 * @param background The background
 	 * @param foreground The foreground
-	 * @param result The result*/
+	 * @param result The result
+	 * @param format The pixel format*/
 	public static final <T extends Buffer> void combine(T background, T foreground, T result,
 			ImagePixelFormat<T> format) {
 		if((background == null)) throw new NullPointerException("Invalid background array");
@@ -919,7 +932,8 @@ public final class ImageUtils {
 	 * method.
 	 * @param background The background
 	 * @param foreground The foreground
-	 * @param result The result*/
+	 * @param result The result
+	 * @param format The pixel format*/
 	public static final <T extends Buffer> void combine(Image background, Image foreground, T result,
 			ImagePixelFormat<T> format) {
 		if((background == null)) throw new NullPointerException("Invalid background image");
@@ -969,7 +983,8 @@ public final class ImageUtils {
 	 * the background. Combining is done using the {@linkplain Colors#blend(int, int)}
 	 * method.
 	 * @param background The background
-	 * @param foreground The foreground*/
+	 * @param foreground The foreground
+	 * @param format The pixel format*/
 	public static final <T extends Buffer> void combineInPlace(WritableImage background, Image foreground, ImagePixelFormat<?> format) {
 		if((background == null)) throw new NullPointerException("Invalid background image");
 		if((foreground == null)) throw new NullPointerException("Invalid foreground image");
