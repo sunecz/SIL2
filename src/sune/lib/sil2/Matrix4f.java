@@ -95,6 +95,15 @@ public final class Matrix4f {
 		this.m34 = data[19];
 	}
 	
+	public static final Matrix4f identity() {
+		return new Matrix4f(
+			1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f, 0.0f
+		);
+	}
+	
 	/**
 	 * Multiply a 4-dimensional vector, given by the given ints, with {@code this} matrix.
 	 * @param a0 The first value of the vector
