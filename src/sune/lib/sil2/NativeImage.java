@@ -65,7 +65,7 @@ public final class NativeImage {
 		if((typeImg == typeNat)) return image;
 		int width  = (int) image.getWidth();
 		int height = (int) image.getHeight();
-		WritableImage dstImg = new WritableImage(width, height);
+		WritableImage dstImg = create(width, height);
 		dstImg.getPixelWriter().setPixels(0, 0, width, height, image.getPixelReader(), 0, 0);
 		return dstImg;
 	}
