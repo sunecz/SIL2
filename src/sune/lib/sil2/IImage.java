@@ -1,7 +1,10 @@
 package sune.lib.sil2;
 
 import java.nio.Buffer;
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Deque;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import javafx.scene.image.Image;
@@ -45,21 +48,69 @@ public final class IImage<T extends Buffer> {
 	 * Image effects.*/
 	public final Effects     effects     = new Effects();
 	
+	protected BufferStrategy<T> bufferStrategy;
+	private int ptrBuffer = 0;
+	private int ptrPixels = 1;
+	
+	private static interface BufferStrategy<T extends Buffer> {
+		T prepareBuffer(int index);
+		T getBuffer    (int index);
+		int numberOfBuffers();
+		void swap(int i1, int i2);
+	}
+	
+	private static final class NBufferStrategy<T extends Buffer> implements BufferStrategy<T> {
+		
+		private final T        original;
+		private final Buffer[] buffers;
+		
+		public NBufferStrategy(T original, int numOfBuffers) {
+			this.original = original;
+			this.buffers  = new Buffer[numOfBuffers];
+		}
+		
+		@Override
+		public T prepareBuffer(int index) {
+			if((index < 0 || index >= buffers.length))
+				return original;
+			T _buffer = newPixelsBuffer(original);
+			buffers[index] = _buffer;
+			BufferUtils.buffercopy(original, _buffer);
+			return _buffer;
+		}
+		
+		@SuppressWarnings("unchecked")
+		@Override
+		public T getBuffer(int index) {
+			return index >= 0 && index < buffers.length ? (T) buffers[index] : original;
+		}
+		
+		@Override
+		public int numberOfBuffers() {
+			return buffers.length;
+		}
+		
+		@Override
+		public void swap(int i1, int i2) {
+			if((i1 < 0 || i1 >= buffers.length ||
+				i2 < 0 || i2 >= buffers.length))
+				return;
+			Buffer _buf = buffers[i1];
+			buffers[i1] = buffers[i2];
+			buffers[i2] = _buf;
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	private static final <T extends Buffer> T newPixelsBuffer(T buffer) {
+		return (T) BufferUtils.newBufferOfType(buffer);
+	}
+	
 	/**
 	 * Creates a new instance from the given image.
 	 * @param image The image*/
 	public IImage(Image image) {
-		this.image 	  = ensureWritableSupported(image);
-		this.width 	  = (int) this.image.getWidth();
-		this.height   = (int) this.image.getHeight();
-		this.wrapper  = FXInternalUtils.getPlatformImageWrapper(this.image);
-		this.format   = getImagePixelFormat(this.image);
-		this.original = getTypedWrapperBuffer(wrapper);
-		this.pixels   = newPixelsBuffer();
-		this.buffer   = newPixelsBuffer();
-		this.channels = new InternalChannels<>(format);
-		BufferUtils.buffercopy(original, pixels);
-		BufferUtils.buffercopy(original, buffer);
+		this(image, 2);
 	}
 	
 	/**
@@ -69,17 +120,33 @@ public final class IImage<T extends Buffer> {
 	 * @param height The height
 	 * @param imagePixels The image pixels*/
 	public IImage(int width, int height, T imagePixels) {
-		this.image 	  = ImageUtils.create(width, height, imagePixels);
-		this.width 	  = width;
-		this.height   = height;
-		this.wrapper  = FXInternalUtils.getPlatformImageWrapper(image);
-		this.format   = getImagePixelFormat(image);
+		this(ImageUtils.create(width, height, imagePixels));
+	}
+	
+	public IImage(int width, int height, T imagePixels, int numOfBuffers) {
+		this(ImageUtils.create(width, height, imagePixels), numOfBuffers);
+	}
+	
+	public IImage(Image image, int numOfBuffers) {
+		if((image == null))
+			throw new IllegalArgumentException("Image cannot be null");
+		if((numOfBuffers <= 0))
+			throw new IllegalArgumentException("Number of buffers must be > 0");
+		this.image 	  = ensureWritableSupported(image);
+		this.width 	  = (int) this.image.getWidth();
+		this.height   = (int) this.image.getHeight();
+		this.wrapper  = FXInternalUtils.getPlatformImageWrapper(this.image);
+		this.format   = getImagePixelFormat(this.image);
 		this.original = getTypedWrapperBuffer(wrapper);
-		this.pixels   = newPixelsBuffer();
-		this.buffer   = newPixelsBuffer();
 		this.channels = new InternalChannels<>(format);
-		BufferUtils.buffercopy(original, pixels);
-		BufferUtils.buffercopy(original, buffer);
+		// Buffering
+		this.bufferStrategy = new NBufferStrategy<>(original, numOfBuffers);
+		this.buffer = bufferStrategy.prepareBuffer(ptrBuffer);
+		this.pixels = bufferStrategy.prepareBuffer(ptrPixels);
+		if((numOfBuffers > 2)) {
+			for(int i = 2; i < numOfBuffers; ++i)
+				bufferStrategy.prepareBuffer(i);
+		}
 	}
 	
 	private static final WritableImage ensureWritableSupported(Image image) {
@@ -649,9 +716,7 @@ public final class IImage<T extends Buffer> {
 							py += iy;
 						}
 						px += ix;
-						// If the loop is ended when it is obvious it continues
-						// in a direction outside of the image, it is possible
-						// to end the loop early and save some cycles.
+						// Get the pixel's color components and add them to the sums
 						if((px >= 0 && py >= 0 && px < width && py < height)) {
 							if((premultiply)) iclr = format.getARGBPre(pixels, (py * width + px) * epp);
 							else              iclr = format.getARGB   (pixels, (py * width + px) * epp);
@@ -669,9 +734,7 @@ public final class IImage<T extends Buffer> {
 							px += ix;
 						}
 						py += iy;
-						// If the loop is ended when it is obvious it continues
-						// in a direction outside of the image, it is possible
-						// to end the loop early and save some cycles.
+						// Get the pixel's color components and add them to the sums
 						if((px >= 0 && py >= 0 && px < width && py < height)) {
 							if((premultiply)) iclr = format.getARGBPre(pixels, (py * width + px) * epp);
 							else              iclr = format.getARGB   (pixels, (py * width + px) * epp);
@@ -824,6 +887,22 @@ public final class IImage<T extends Buffer> {
 				-1.0f,  1.0f,  1.0f,
 				 0.0f,  1.0f,  2.0f
 			};
+			convolution.convolute2d(kernel, 1, true);
+		}
+		
+		/**
+		 * Applies emboss effect to {@code this} image.
+		 * @param angleDeg Angle of the emboss effect, in degrees
+		 * @param value Strength of the emboss effect
+		 * @param depth Depth of the emboss effect*/
+		public final void emboss(float angleDeg, float value) {
+			// Normalized float kernel
+			final float[] kernel = {
+				-value, -1.0f,  0.0f,
+				-1.0f,  1.0f,  1.0f,
+				 0.0f,  1.0f,  value
+			};
+			MatrixUtils.rotate(kernel, (float) Math.toRadians(angleDeg));
 			convolution.convolute2d(kernel, 1, true);
 		}
 		
@@ -1023,6 +1102,474 @@ public final class IImage<T extends Buffer> {
 		}
 	}
 	
+	public static final int BACKGROUND = 0;
+	public static final int FOREGROUND = 0xff;
+	public static final int BLANK      = 0x100;
+	
+	private static final class StructuresConfiguration {
+		
+		public final int valueTrue;
+		public final int valueFalse;
+		public final BiFunction<Integer, Integer, Boolean> conditionHas;
+		public final Function<Integer, Boolean> conditionCan;
+		
+		public StructuresConfiguration(int valueTrue, int valueFalse,
+				BiFunction<Integer, Integer, Boolean> conditionHas,
+				Function<Integer, Boolean> conditionCan) {
+			this.valueTrue    = valueTrue;
+			this.valueFalse   = valueFalse;
+			this.conditionHas = conditionHas;
+			this.conditionCan = conditionCan;
+		}
+	}
+	
+	public final Structures structures = new Structures();
+	public final class Structures {
+		
+		public final StructuresConfiguration DEFAULT_CONFIGURATION
+			= new StructuresConfiguration(FOREGROUND, BACKGROUND, (a, b) -> !a.equals(b), (a) -> true);
+		
+		public final void convolute2d(int[] structure) {
+			convolute2d(structure, DEFAULT_CONFIGURATION);
+		}
+		
+		public final void convolute2d(int[] structure, StructuresConfiguration config) {
+			// Make sure that the convolution outputs to the current version of pixels
+			BufferUtils.buffercopy(pixels, buffer);
+			convolute2d(structure, pixels, buffer, config);
+			swapBuffer();
+		}
+		
+		private final void convolute2d(int[] structure, T input, T output,
+				StructuresConfiguration config) {
+			int slen = structure.length;
+			int size = (int) FastMath.sqrt(slen) + 1;
+			int[] indexes = new int[slen];
+			indexStructure(indexes, size, size);
+			convolute2d(structure, indexes, input, output, config);
+		}
+		
+		private final void indexStructure(int[] indexes, int rows, int cols) {
+			int hr = rows / 2;
+			int hc = cols / 2;
+			for(int i = 0, c = cols, x = -hc, y = -hr * width, l = indexes.length; i < l; ++i) {
+				indexes[i] = y + x; ++x;
+				if((--c == 0)) { c = cols; x = -hc; y += width; }
+			}
+		}
+		
+		private final int[] checkStructure(int[] structure) {
+			int rows, cols = rows = (int) FastMath.sqrt(structure.length);
+			if((rows & 1) == 0 || (cols & 1) == 0) {
+				int newSize = ++rows * ++cols;
+				structure  	= Arrays.copyOf(structure, newSize);
+			}
+			return structure;
+		}
+		
+		private final void convolute2d(int[] structure, int[] indexes, T input, T output,
+				StructuresConfiguration config) {
+			int[] fStructure = checkStructure(structure);
+			final CounterLock lock = new CounterLock();
+			int x = 0;
+			int y = 0;
+			int w = width  / 4;
+			int h = height / 4;
+			for(int kx = x, ky = y;;) {
+				int sx = kx;
+				int sy = ky;
+				int sw = kx + w >= width  ? width  - kx : w;
+				int sh = ky + h >= height ? height - ky : h;
+				lock.increment();
+				Threads.execute(() -> {
+					convolute2d(sx, sy, sw, sh, width, fStructure, indexes, input, output, config);
+					lock.decrement();
+				});
+				if((kx += w) >= width) {
+					kx  = 0;
+					if((ky += h) >= height)
+						break;
+				}
+			}
+			lock.await();
+		}
+		
+		private final void convolute2d(int x, int y, int width, int height, int stride,
+				int[] structure, int[] indexes, T input, T output, StructuresConfiguration config) {
+			int imgw = IImage.this.width;
+			int imgh = IImage.this.height;
+			int slen = (int) FastMath.sqrt(structure.length) / 2;
+			int maxx = clamp(x + width,  slen, IImage.this.width  - slen);
+			int maxy = clamp(y + height, slen, IImage.this.height - slen);
+			int minx = clamp(x, slen, maxx - 1);
+			int miny = clamp(y, slen, maxy - 1);
+			int neww = maxx - minx;
+			int newh = maxy - miny;
+			int iinc = stride - neww;
+			int epp  = format.getElementsPerPixel();
+			for(int i = miny * stride + minx, c = neww, r = newh, m = indexes.length, pxv;; ++i) {
+				if((config.conditionCan.apply(format.getARGB(input, i * epp) & 0xff))) {
+					pxv = config.valueTrue;
+					for(int k = 0; k < m; ++k) {
+						if((structure[k] <= FOREGROUND
+								&& config.conditionHas.apply(format.getARGB(input, (i + indexes[k]) * epp) & 0xff,
+								                             structure[k]))) {
+							pxv = config.valueFalse; break;
+						}
+					}
+					format.setPixel(output, i * epp, pxv, pxv, pxv, 0xff);
+				}
+				if((--c == 0)) {
+					c  = neww;
+					i += iinc;
+					if((--r == 0))
+						break;
+				}
+			}
+			// Top edge
+			convolute2d_edges(x, 0, width, slen, stride - width,
+							  stride, structure, indexes, input, output, config);
+			// Bottom edge
+			convolute2d_edges(x, imgh - slen, width, slen, stride - width,
+							  stride, structure, indexes, input, output, config);
+			// Left edge
+			convolute2d_edges(0, Math.max(y, slen), slen, height - (y + height >= imgh ? slen : 0), imgw - slen,
+							  stride, structure, indexes, input, output, config);
+			// Right edge
+			convolute2d_edges(imgw - slen, Math.max(y, slen), slen, height - (y + height >= imgh ? slen : 0), imgw - slen,
+							  stride, structure, indexes, input, output, config);
+		}
+		
+		private final void convolute2d_edges(int x, int y, int w, int h, int d, int stride, int[] structure,
+				int[] indexes, T input, T output, StructuresConfiguration config) {
+			if((w <= 0 || h <= 0)) return; // Nothing to do
+			int slen = (int) FastMath.sqrt(structure.length) + 1;
+			int imgw = IImage.this.width;
+			int imgh = IImage.this.height;
+			int epp  = format.getElementsPerPixel();
+			for(int i = y * stride + x, c = w, r = h, m = indexes.length, ind, kcx, kcy, kh = slen / 2, pxv;; ++i) {
+				if((config.conditionCan.apply(format.getARGB(input, i * epp) & 0xff))) {
+					pxv = config.valueTrue;
+					for(int k = 0, kx = -kh, ky = -kh, ke = kh+1; k < m; ++k) {
+						ind = i + indexes[k];
+						kcx = x + (w - c) + kx;
+						kcy = y + (h - r) + ky;
+						if((kcy < 0))     ind -= kcy * stride; else
+						if((kcy >= imgh)) ind -= (kcy - imgh + 1) * stride;
+						if((kcx < 0))     ind -= kcx; else
+						if((kcx >= imgw)) ind -= kcx - imgw + 1;
+						if((structure[k] <= FOREGROUND
+								&& config.conditionHas.apply(format.getARGB(input, ind * epp) & 0xff,
+								                             structure[k]))) {
+							pxv = config.valueFalse; break;
+						}
+						if((++kx == ke)) {
+							kx = -kh;
+							if((++ky == ke))
+								break;
+						}
+					}
+					format.setPixel(output, i * epp, pxv, pxv, pxv, 0xff);
+				}
+				if((--c == 0)) {
+					c  = w;
+					i += d;
+					if((--r == 0))
+						break;
+				}
+			}
+		}
+	}
+	
+	public final Morphology morphology = new Morphology();
+	public final class Morphology {
+		
+		public final void binarize(int threshold) {
+			adjustments.grayscale();
+			adjustments.threshold(threshold);
+		}
+		
+		private final boolean checkStructure(int[] structure) {
+			int sqrt = (int) FastMath.sqrt(structure.length) + 1;
+			return sqrt * sqrt == structure.length;
+		}
+		
+		// https://homepages.inf.ed.ac.uk/rbf/HIPR2/hitmiss.htm
+		public final void hitAndMiss(int[] structure) {
+			if(!checkStructure(structure))
+				throw new IllegalArgumentException("Non-square structure");
+			structures.convolute2d(structure);
+		}
+		
+		// https://homepages.inf.ed.ac.uk/rbf/HIPR2/thin.htm
+		public final void thin(int[] structure) {
+			// thin(img, struct) = img - hitAndMiss(struct)
+			// thin(img, struct) = AND(img, NOT(hitAndMiss(struct)))
+			opSave();
+			hitAndMiss(structure);
+			operations.not();
+			operations.and();
+		}
+		
+		public final void dilation() {
+			dilation(3);
+		}
+		
+		// https://homepages.inf.ed.ac.uk/rbf/HIPR2/dilate.htm
+		public final void dilation(int size) {
+			if((size & 1) == 0)
+				throw new IllegalArgumentException("Size must be odd");
+			final int[] structure = new int[size * size];
+			Arrays.fill(structure, FOREGROUND);
+			structures.convolute2d(structure, new StructuresConfiguration(BACKGROUND, FOREGROUND, (a, b) -> a.equals(b), (a) -> a.equals(BACKGROUND)));
+		}
+		
+		public final void erosion() {
+			erosion(3);
+		}
+		
+		// https://homepages.inf.ed.ac.uk/rbf/HIPR2/erode.htm
+		public final void erosion(int size) {
+			if((size & 1) == 0)
+				throw new IllegalArgumentException("Size must be odd");
+			final int[] structure = new int[size * size];
+			Arrays.fill(structure, BACKGROUND);
+			structures.convolute2d(structure, new StructuresConfiguration(FOREGROUND, BACKGROUND, (a, b) -> a.equals(b), (a) -> a.equals(FOREGROUND)));
+		}
+		
+		public final void skeletonize() {
+			thin(new int[] {
+       			BACKGROUND, BACKGROUND, BACKGROUND,
+       			BLANK,      FOREGROUND, BLANK,
+       			FOREGROUND, FOREGROUND, FOREGROUND
+       		});
+			thin(new int[] {
+       			FOREGROUND, FOREGROUND, FOREGROUND,
+       			BLANK,      FOREGROUND, BLANK,
+       			BACKGROUND, BACKGROUND, BACKGROUND
+       		});
+			thin(new int[] {
+       			FOREGROUND, BLANK,      BACKGROUND,
+       			FOREGROUND, FOREGROUND, BACKGROUND,
+       			FOREGROUND, BLANK,      BACKGROUND
+       		});
+			thin(new int[] {
+       			BACKGROUND, BLANK,      FOREGROUND,
+       			BACKGROUND, FOREGROUND, FOREGROUND,
+       			BACKGROUND, BLANK,      FOREGROUND
+       		});
+			thin(new int[] {
+       			BLANK,      BACKGROUND, BACKGROUND,
+       			FOREGROUND, FOREGROUND, BACKGROUND,
+       			BLANK,      FOREGROUND, BLANK
+       		});
+			thin(new int[] {
+       			BLANK,      FOREGROUND, BLANK,
+       			BACKGROUND, FOREGROUND, FOREGROUND,
+       			BACKGROUND, BACKGROUND, BLANK
+       		});
+			thin(new int[] {
+       			BLANK,      FOREGROUND, BLANK,
+       			FOREGROUND, FOREGROUND, BACKGROUND,
+       			BLANK,      BACKGROUND, BACKGROUND
+       		});
+			thin(new int[] {
+       			BACKGROUND, BACKGROUND, BLANK,
+       			BACKGROUND, FOREGROUND, FOREGROUND,
+       			BLANK,      FOREGROUND, BLANK
+       		});
+		}
+		
+		public final void skeletonize45deg() {
+			thin(new int[] {
+				BLANK,      BACKGROUND, BACKGROUND,
+				FOREGROUND, FOREGROUND, BACKGROUND,
+				FOREGROUND, FOREGROUND, BLANK
+			});
+			thin(new int[] {
+				FOREGROUND, FOREGROUND, BLANK,
+				FOREGROUND, FOREGROUND, BACKGROUND,
+				BLANK,      BACKGROUND, BACKGROUND
+			});
+			thin(new int[] {
+				BLANK,      FOREGROUND, FOREGROUND,
+				BACKGROUND, FOREGROUND, FOREGROUND,
+				BACKGROUND, BACKGROUND, BLANK
+			});
+			thin(new int[] {
+				BACKGROUND, BACKGROUND, BLANK,
+				BACKGROUND, FOREGROUND, FOREGROUND,
+				BLANK,      FOREGROUND, FOREGROUND
+			});
+		}
+		
+		public final void prune() {
+			thin(new int[] {
+       			BACKGROUND, BACKGROUND, BACKGROUND,
+       			BACKGROUND, FOREGROUND, BACKGROUND,
+       			BACKGROUND, BLANK,      BLANK
+       		});
+			thin(new int[] {
+       			BACKGROUND, BACKGROUND, BACKGROUND,
+       			BACKGROUND, FOREGROUND, BACKGROUND,
+       			BLANK,      BLANK,      BACKGROUND
+       		});
+			thin(new int[] {
+       			BACKGROUND, BACKGROUND, BACKGROUND,
+       			BACKGROUND, FOREGROUND, BLANK,
+       			BACKGROUND, BACKGROUND, BLANK
+       		});
+			thin(new int[] {
+       			BACKGROUND, BACKGROUND, BACKGROUND,
+       			BLANK,      FOREGROUND, BACKGROUND,
+       			BLANK,      BACKGROUND, BACKGROUND
+       		});
+			thin(new int[] {
+       			BACKGROUND, BACKGROUND, BACKGROUND,
+       			BLANK,      FOREGROUND, BACKGROUND,
+       			BLANK,      BLANK,      BACKGROUND
+       		});
+			thin(new int[] {
+       			BLANK,      BLANK,      BACKGROUND,
+       			BLANK,      FOREGROUND, BACKGROUND,
+       			BACKGROUND, BACKGROUND, BACKGROUND
+       		});
+			thin(new int[] {
+       			BACKGROUND, BLANK,      BLANK,
+       			BACKGROUND, FOREGROUND, BLANK,
+       			BACKGROUND, BACKGROUND, BACKGROUND
+       		});
+			thin(new int[] {
+       			BACKGROUND, BACKGROUND, BACKGROUND,
+       			BACKGROUND, FOREGROUND, BLANK,
+       			BACKGROUND, BLANK,      BLANK
+       		});
+		}
+	}
+	
+	public final Operations operations = new Operations();
+	public final class Operations {
+		
+		public final int FALSE = BACKGROUND;
+		public final int TRUE  = FOREGROUND;
+		
+		public final int COLOR_FALSE = Colors.rgba(BACKGROUND, BACKGROUND, BACKGROUND, 0xff);
+		public final int COLOR_TRUE  = Colors.rgba(FOREGROUND, FOREGROUND, FOREGROUND, 0xff);
+		
+		private final Deque<T> stack = new ArrayDeque<T>();
+		
+		private final int bool2val(boolean bool) {
+			return bool ? COLOR_TRUE : COLOR_FALSE;
+		}
+		
+		// Takes the current state of the image's pixels and do an OR operation
+		// with the first buffer on the stack
+		public final void or() {
+			T buffer = stack.pop();
+			applyActionINT((input, output, i, varStore) -> {
+				boolean pi = (format.getARGB(input,  i) & 0xff) == TRUE;
+				boolean pb = (format.getARGB(buffer, i) & 0xff) == TRUE;
+				format.setARGB(output, i, bool2val(pi | pb));
+			});
+		}
+		
+		public final void and() {
+			T buffer = stack.pop();
+			applyActionINT((input, output, i, varStore) -> {
+				boolean pi = (format.getARGB(input,  i) & 0xff) == TRUE;
+				boolean pb = (format.getARGB(buffer, i) & 0xff) == TRUE;
+				format.setARGB(output, i, bool2val(pi & pb));
+			});
+		}
+		
+		// Does not use stack
+		public final void not() {
+			applyActionINT((input, output, i, varStore) -> {
+				format.setARGB(output, i, bool2val((format.getARGB(input, i) & 0xff) == FALSE));
+			});
+		}
+		
+		// Applies Summed-area table "operator" to the binary image
+		// https://en.wikipedia.org/wiki/Summed-area_table
+		public final int[] integral(Function<Integer, Integer> function) {
+			int[] array = new int[width * height];
+			for(int i = 0, x = 0, y = 0;; ++i) {
+				int sum = function.apply(format.getARGB(pixels, i) & 0xff);
+				if((x > 0))          sum += array[i - 1];
+				if((y > 0))          sum += array[i - width];
+				if((y > 0 && x > 0)) sum -= array[i - width - 1];
+				array[i] = sum;
+				if((++x == width)) {
+					x = 0;
+					if((++y == height))
+						break;
+				}
+			}
+			return array;
+		}
+	}
+	
+	public final Transforms transforms = new Transforms();
+	public final class Transforms {
+		
+		public final int[] hough(int minContrast) {
+			return hough(width, height, minContrast);
+		}
+		
+		// https://rosettacode.org/wiki/Hough_transform#Java
+		public final int[] hough(int thetaAxisSize, int radiusAxisSize, int minContrast) {
+			int[] data = new int[thetaAxisSize * radiusAxisSize];
+			int maxr = (int) FastMath.ceil(FastMath.hypot(width, height));
+			int half = radiusAxisSize >>> 1;
+			float[] sint = new float[thetaAxisSize];
+			float[] cost = new float[thetaAxisSize];
+			for(int theta = thetaAxisSize - 1; theta >= 0; --theta) {
+				float rad = theta * FastMath.PI / thetaAxisSize;
+				sint[theta] = FastMath.sin(rad);
+				cost[theta] = FastMath.cos(rad);
+			}
+			int epp = format.getElementsPerPixel();
+			applyActionINT((input, output, i, varStore) -> {
+				boolean canApply = false;
+				int x = i % width;
+				int y = i / width;
+				int val = format.getARGB(input, i);
+				for(int k = 8; k >= 0; --k) {
+					if((k == 4)) continue;
+					int newx = x + (i % 3) - 1;
+					int newy = y + (i / 3) - 1;
+					if((newx < 0 || newx >= width || newy < 0 || newy >= height))
+						continue;
+					int pxv = format.getARGB(input, (newy * width + newx) * epp);
+					if((FastMath.abs(pxv - val) >= minContrast)) {
+						canApply = true; break;
+					}
+				}
+				if((canApply)) {
+					for(int theta = thetaAxisSize - 1; theta >= 0; --theta) {
+						int r = (int) FastMath.round((cost[theta] * x + sint[theta] * y) * half / maxr) + half;
+						data[r * radiusAxisSize + theta] += 1;
+					}
+				}
+			});
+			return data;
+		}
+	}
+	
+	// Saves the current state of the image's pixels to the operations stack
+	public final void opSave() {
+		opSave(pixels);
+	}
+	
+	public final void opSave(T buffer) {
+		operations.stack.push(BufferUtils.copy(buffer));
+	}
+	
+	// Removes the first element on the operations stack and returns it
+	public final T opRemove() {
+		return operations.stack.pop();
+	}
+	
 	@FunctionalInterface
 	private static interface Job<T extends Buffer> {
 		void execute(int rx, int ry, int rw, int rh, T input, int stride, T output);
@@ -1078,7 +1625,7 @@ public final class IImage<T extends Buffer> {
 	 * these methods are made for speed, not for accuracy.<br><br>
 	 * @version 1.0
 	 * @author Ivan Kutskir
-	 * @author Petr Cipra
+	 * @author Sune
 	 * @see
 	 * <a href="http://blog.ivank.net/fastest-gaussian-blur.html">
 	 * 	http://blog.ivank.net/fastest-gaussian-blur.html
@@ -1575,22 +2122,38 @@ public final class IImage<T extends Buffer> {
 		swapBuffer();
 	}
 	
-	@SuppressWarnings("unchecked")
-	private final T newPixelsBuffer() {
-		return (T) BufferUtils.newBufferOfType(original);
-	}
-	
 	private final void swapBuffer() {
 		T parray = pixels;
 		pixels = buffer;
 		buffer = parray;
+		// Swap the buffers also in the buffer strategy
+		bufferStrategy.swap(ptrBuffer, ptrPixels);
+		ptrBuffer = 1 - ptrBuffer;
+		ptrPixels = 1 - ptrPixels;
 	}
 	
 	/**
 	 * Writes all the changes to the underlying JavaFX image.*/
 	public final void apply() {
 		try {
-			BufferUtils.buffercopy(pixels, original);
+			int numOfBuffers = bufferStrategy.numberOfBuffers();
+			// Special case for 1 buffer
+			if((numOfBuffers == 1)) {
+				// Must copy only if the buffers are swapped incorrectly
+				if((buffer == original)) {
+					BufferUtils.buffercopy(pixels, original);
+					swapBuffer();
+				}
+			} else {
+				// Shift contents of the buffers up the line
+				T src, dst;
+				for(int i = numOfBuffers; i > 1; --i) {
+					src = bufferStrategy.getBuffer(i - 1);
+					dst = bufferStrategy.getBuffer(i);
+					BufferUtils.buffercopy(src, dst);
+				}
+			}
+			// Update the internal JavaFX image, so that changes are apparent
 			wrapper.update();
 			FXInternalUtils.updateImageSafe(image);
 		} catch(Exception ex) {
@@ -1765,6 +2328,10 @@ public final class IImage<T extends Buffer> {
 		pixels   = null;
 		buffer   = null;
 		channels = null;
+		// Buffering
+		bufferStrategy = null;
+		ptrBuffer = 0;
+		ptrPixels = 1;
 	}
 	
 	/**

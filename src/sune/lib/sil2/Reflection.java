@@ -9,6 +9,10 @@ final class Reflection {
 	
 	private static final Unsafe unsafe = UnsafeInstance.get();
 	
+	// Forbid anyone to create an instance of this class
+	private Reflection() {
+	}
+	
 	private static final long unsafe_objectFieldOffset(Field field) {
 		return unsafe.objectFieldOffset(field);
 	}

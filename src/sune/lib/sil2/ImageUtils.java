@@ -113,9 +113,7 @@ public final class ImageUtils {
 	 * @return The newly created image*/
 	public static final WritableImage create(int width, int height, Buffer pixels) {
 		if((pixels == null)) throw new NullPointerException("Invalid pixels array");
-		if((width <= 0 || height <= 0))
-			throw new IllegalArgumentException("Invalid size");
-		WritableImage image = new WritableImage(width, height);
+		WritableImage image = create(width, height);
 		int epp = ImagePixelFormats.from(image).getElementsPerPixel();
 		setPixels(image, 0, 0, width, height, pixels, width * epp);
 		return image;
@@ -128,12 +126,11 @@ public final class ImageUtils {
 	 * @param color The color
 	 * @return The newly created image*/
 	public static final WritableImage create(int width, int height, int color) {
-		if((width <= 0 || height <= 0))
-			throw new IllegalArgumentException("Invalid size");
-		ImagePixelFormat<?> format = ImagePixelFormats.getNativeFormat();
-		Buffer pixels = format.newBuffer(width * height);
+		WritableImage image = create(width, height);
+		ImagePixelFormat<?> format = ImagePixelFormats.from(image);
+		Buffer pixels = getPixels(image);
 		BufferUtils.fill(pixels, color, format.getElementsPerPixel());
-		return create(width, height, pixels);
+		return image;
 	}
 	
 	// ----- IMAGE CROP
@@ -158,17 +155,17 @@ public final class ImageUtils {
 		if((src == null)) throw new NullPointerException("Invalid source array");
 		if((dst == null)) throw new NullPointerException("Invalid destination array");
 		if((srcx < 0 || srcy < 0))
-			throw new IllegalArgumentException("Invalid source coordinations");
+			throw new IllegalArgumentException("Invalid source coordinates");
 		if((dstx < 0 || dsty < 0))
-			throw new IllegalArgumentException("Invalid destination coordinations");
+			throw new IllegalArgumentException("Invalid destination coordinates");
 		if((width <= 0 || height <= 0))
 			throw new IllegalArgumentException("Invalid cropping dimensions");
 		int srci = srcy * srcStride + srcx;
 		int dsti = dsty + dstStride + dstx;
 		if((srci >= src.capacity()))
-			throw new IllegalArgumentException("Invalid source coordinations");
+			throw new IllegalArgumentException("Invalid source coordinates");
 		if((dsti >= dst.capacity()))
-			throw new IllegalArgumentException("Invalid destination coordinations");
+			throw new IllegalArgumentException("Invalid destination coordinates");
 		for(int iy = 0; iy < height; ++iy, srci += srcStride, dsti += dstStride) {
 			// Copy whole rows instead of the individual pixels
 			System.arraycopy(src, srci, dst, dsti, width);
@@ -226,9 +223,9 @@ public final class ImageUtils {
 		if((src == null)) throw new NullPointerException("Invalid source image");
 		if((dst == null)) throw new NullPointerException("Invalid destination image");
 		if((srcx < 0 || srcy < 0 || srcx >= (int) src.getWidth() || srcy >= (int) src.getHeight()))
-			throw new IllegalArgumentException("Invalid source coordinations");
+			throw new IllegalArgumentException("Invalid source coordinates");
 		if((dstx < 0 || dsty < 0 || dstx >= (int) dst.getWidth() || dsty >= (int) dst.getHeight()))
-			throw new IllegalArgumentException("Invalid destination coordinations");
+			throw new IllegalArgumentException("Invalid destination coordinates");
 		dst.getPixelWriter().setPixels(dstx, dsty, width, height, src.getPixelReader(), srcx, srcy);
 	  }
 	
@@ -270,7 +267,7 @@ public final class ImageUtils {
 	 * Quickly resizes the given source array with the given width and height
 	 * to the given destination width and height and outputs it to the given
 	 * destination array. The pixels are resized using a Bresenham's algorithm
-	 * and no interpolation is used.
+	 * and nearest-neighbor-like interpolation is used.
 	 * @param src The source array
 	 * @param srcw The source width
 	 * @param srch The source height
@@ -953,39 +950,12 @@ public final class ImageUtils {
 	
 	/**
 	 * Combines the given background and the given foreground and outputs it to
-	 * a new image. Combining is done using the {@linkplain Colors#blend(int, int)}
-	 * method.
-	 * @param background The background
-	 * @param foreground The foreground
-	 * @return The combined image*/
-	public static final <T extends Buffer> WritableImage combine(Image background, Image foreground) {
-		if((background == null)) throw new NullPointerException("Invalid background image");
-		if((foreground == null)) throw new NullPointerException("Invalid foreground image");
-		int width  = (int) background.getWidth();
-		int height = (int) background.getHeight();
-		@SuppressWarnings("unchecked")
-		ImagePixelFormat<T> formatBGR = (ImagePixelFormat<T>) ImagePixelFormats.from(background);
-		@SuppressWarnings("unchecked")
-		ImagePixelFormat<T> formatFGR = (ImagePixelFormat<T>) ImagePixelFormats.from(foreground);
-		if(!formatBGR.equals(formatFGR))
-			throw new IllegalArgumentException("Images do not have same image pixel format");
-		@SuppressWarnings("unchecked")
-		T pixelsBGR = (T) getPixels(background);
-		@SuppressWarnings("unchecked")
-		T pixelsFGR = (T) getPixels(foreground);
-		T buffer = formatBGR.newBuffer(width * height);
-		combine(pixelsBGR, pixelsFGR, buffer, formatBGR);
-		return create(width, height, buffer);
-	}
-	
-	/**
-	 * Combines the given background and the given foreground and outputs it to
 	 * the background. Combining is done using the {@linkplain Colors#blend(int, int)}
 	 * method.
 	 * @param background The background
 	 * @param foreground The foreground
 	 * @param format The pixel format*/
-	public static final <T extends Buffer> void combineInPlace(WritableImage background, Image foreground, ImagePixelFormat<?> format) {
+	public static final <T extends Buffer> void combine(WritableImage background, Image foreground) {
 		if((background == null)) throw new NullPointerException("Invalid background image");
 		if((foreground == null)) throw new NullPointerException("Invalid foreground image");
 		@SuppressWarnings("unchecked")
@@ -999,6 +969,59 @@ public final class ImageUtils {
 		@SuppressWarnings("unchecked")
 		T pixelsFGR = (T) getPixels(foreground);
 		combine(pixelsBGR, pixelsFGR, pixelsBGR, formatBGR);
+	}
+	
+	/**
+	 * Combines the given background and the given foreground and outputs it to
+	 * the given buffer. The buffer must have the correct length. Combining is done
+	 * using the {@linkplain Colors#blend(int, int)} method.
+	 * @param background The background
+	 * @param foreground The foreground
+	 * @param buffer The output buffer*/
+	public static final <T extends Buffer> void combine(Image background, Image foreground, T buffer) {
+		if((background == null)) throw new NullPointerException("Invalid background image");
+		if((foreground == null)) throw new NullPointerException("Invalid foreground image");
+		int width  = (int) background.getWidth();
+		int height = (int) background.getHeight();
+		if((buffer.capacity() % (width * height) != 0))
+			throw new NullPointerException("Incorrect size of an output buffer");
+		@SuppressWarnings("unchecked")
+		ImagePixelFormat<T> formatBGR = (ImagePixelFormat<T>) ImagePixelFormats.from(background);
+		@SuppressWarnings("unchecked")
+		ImagePixelFormat<T> formatFGR = (ImagePixelFormat<T>) ImagePixelFormats.from(foreground);
+		if(!formatBGR.equals(formatFGR))
+			throw new IllegalArgumentException("Images do not have same image pixel format");
+		@SuppressWarnings("unchecked")
+		T pixelsBGR = (T) getPixels(background);
+		@SuppressWarnings("unchecked")
+		T pixelsFGR = (T) getPixels(foreground);
+		combine(pixelsBGR, pixelsFGR, buffer, formatBGR);
+	}
+	
+	/**
+	 * Combines the given background and the given foreground and outputs it to
+	 * a new image. The image must have the same format as the foreground and
+	 * the background image.
+	 * Combining is done using the {@linkplain Colors#blend(int, int)} method.
+	 * @param background The background
+	 * @param foreground The foreground
+	 * @param output The output image*/
+	public static final <T extends Buffer> void combine(Image background, Image foreground, WritableImage output) {
+		if((background == null)) throw new NullPointerException("Invalid background image");
+		if((foreground == null)) throw new NullPointerException("Invalid foreground image");
+		@SuppressWarnings("unchecked")
+		ImagePixelFormat<T> formatBGR = (ImagePixelFormat<T>) ImagePixelFormats.from(background);
+		@SuppressWarnings("unchecked")
+		ImagePixelFormat<T> formatFGR = (ImagePixelFormat<T>) ImagePixelFormats.from(foreground);
+		if(!formatBGR.equals(formatFGR))
+			throw new IllegalArgumentException("Images do not have same image pixel format");
+		@SuppressWarnings("unchecked")
+		T pixelsBGR = (T) getPixels(background);
+		@SuppressWarnings("unchecked")
+		T pixelsFGR = (T) getPixels(foreground);
+		@SuppressWarnings("unchecked")
+		T pixelsOUT = (T) getPixels(output);
+		combine(pixelsBGR, pixelsFGR, pixelsOUT, formatBGR);
 	}
 	
 	// ----- IMAGE PLACE

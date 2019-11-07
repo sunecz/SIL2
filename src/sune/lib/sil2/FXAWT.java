@@ -8,7 +8,6 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
-import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritableImage;
@@ -25,7 +24,7 @@ import javafx.scene.image.WritablePixelFormat;
  * internally, thus making it impossible to obtain non-premultiplied versions
  * of an AWT image, with the exception of
  * {@link BufferedImage.TYPE_3BYTE_BGR TYPE_3BYTE_BGR} format.
- * @see SwingFXUtils
+ * @see javafx.embed.swing.SwingFXUtils SwingFXUtils
  * @since 2.0
  * @author Sune*/
 public final class FXAWT {

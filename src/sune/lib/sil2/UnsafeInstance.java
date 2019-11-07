@@ -8,15 +8,13 @@ import sun.misc.Unsafe;
  * This class is used to access the Unsafe instance.<br><br>
  * <em>Note:</em> this class throws an {@linkplain IllegalStateException}
  * when the Unsafe instance cannot be obtained. This can happen on systems
- * where the sun.misc.Unsafe class was disabled/removed, possibly causing
- * the application to crash, however a simple try-catch block can be used
- * to ignore the exception.
+ * where the sun.misc.Unsafe class was disabled or removed.
  * <h2>Usage:</h2>
  * <pre>
  * Unsafe unsafe = UnsafeInstance.get();
  * // ... operations with the Unsafe instance</pre>
  * @author Sune
- * @since 2.0.2
+ * @since 2.0
  * @see sun.misc.Unsafe*/
 final class UnsafeInstance {
 	
@@ -35,6 +33,10 @@ final class UnsafeInstance {
 			throw new IllegalStateException("Unable to obtain the Unsafe instance");
 		}
 		unsafe = _unsafe;
+	}
+	
+	// Forbid anyone to create an instance of this class
+	private UnsafeInstance() {
 	}
 	
 	/**

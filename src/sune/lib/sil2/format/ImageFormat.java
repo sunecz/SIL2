@@ -38,15 +38,14 @@ public enum ImageFormat {
 	 * with that file type was found, or if no file type is present.*/
 	public static final ImageFormat fromFileName(String name) {
 		int index = name.lastIndexOf('.');
-		if((index > 0)) {
+		if((index >= 0)) {
 			String type = name.substring(index + 1);
 			for(ImageFormat format : values()) {
 				String[] extensions = format.getFileExtensions();
 				for(String extension : extensions) {
 					extension = extension.substring(2);
-					if((type.equalsIgnoreCase(extension))) {
+					if((type.equalsIgnoreCase(extension)))
 						return format;
-					}
 				}
 			}
 		}

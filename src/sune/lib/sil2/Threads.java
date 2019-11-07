@@ -2,6 +2,7 @@ package sune.lib.sil2;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * Class used for thread management. Contains methods used for executing
@@ -9,19 +10,31 @@ import java.util.concurrent.Executors;
  * <br><br>
  * Note that the {@linkplain #destroy()} static method has to be called
  * when an application should close in order to stop all the running threads.
- * @author Petr Cipra*/
-public final class Threads {
+ * @author Sune*/
+final class Threads {
 	
-	private static final ExecutorService THREADS = newCachedDeamonThreadPool();
-	private static final ExecutorService newCachedDeamonThreadPool() {
-		return Executors.newCachedThreadPool((r) -> {
+	private static final class DaemonThreadFactory implements ThreadFactory {
+		
+		public static final DaemonThreadFactory INSTANCE = new DaemonThreadFactory();
+		
+		private DaemonThreadFactory() {
+		}
+		
+		@Override
+		public final Thread newThread(Runnable r) {
 			Thread thread = new Thread(r);
 			thread.setDaemon(true);
 			return thread;
-		});
+		}
 	}
 	
-	// forbid anyone to create an instance of this class
+	private static final ExecutorService THREADS = newDeamonThreadPool();
+	private static final ExecutorService newDeamonThreadPool() {
+		int numOfCores = Runtime.getRuntime().availableProcessors();
+		return Executors.newFixedThreadPool(numOfCores, DaemonThreadFactory.INSTANCE);
+	}
+	
+	// Forbid anyone to create an instance of this class
 	private Threads() {
 	}
 	
