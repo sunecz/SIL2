@@ -101,12 +101,12 @@ public final class ImagePixelFormats {
 		if((image == null || dstFormat == null))
 			throw new IllegalArgumentException();
 		@SuppressWarnings("unchecked")
-		ImagePixelFormat<Buffer> srcFormat = (ImagePixelFormat<Buffer>) ImagePixelFormats.from(image);
+		ImagePixelFormat<Buffer> srcFormat = (ImagePixelFormat<Buffer>) from(image);
 		int width  = (int) image.getWidth();
 		int height = (int) image.getHeight();
 		int pixelsCount = width * height;
 		Buffer src = ImageUtils.getPixels(image);
-		return ImagePixelFormats.convert(src, srcFormat, dstFormat, pixelsCount);
+		return convert(src, srcFormat, dstFormat, pixelsCount);
 	}
 	
 	/**
