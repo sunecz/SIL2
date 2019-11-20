@@ -8,9 +8,7 @@ import sune.lib.sil2.format.ImagePixelFormat;
 import sune.lib.sil2.format.ImagePixelFormats;
 
 /**
- * Contains static methods used for image manipulation. Note that this class
- * supports only working with ints, meaning that any optimization for different
- * pixel formats is not possible using this API.*/
+ * Contains static methods used for image manipulation.*/
 public final class ImageUtils {
 	
 	/**

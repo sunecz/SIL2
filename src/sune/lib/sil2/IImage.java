@@ -151,9 +151,8 @@ public final class IImage<T extends Buffer> {
 	
 	private static final WritableImage ensureWritableSupported(Image image) {
 		// If the image's format is not supported, convert it to a native image
-		if(!ImagePixelFormats.isSupported(image.getPixelReader().getPixelFormat())) {
+		if(!ImagePixelFormats.isSupported(image.getPixelReader().getPixelFormat()))
 			image = NativeImage.ensurePixelFormat(image);
-		}
 		// Ensure that the image is writable
 		return ImageUtils.toWritable(image);
 	}
