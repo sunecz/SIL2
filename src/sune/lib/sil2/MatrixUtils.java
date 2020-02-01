@@ -1,123 +1,186 @@
 package sune.lib.sil2;
 
+import java.io.PrintStream;
 import java.util.Locale;
 
 public final class MatrixUtils {
 	
-	private static final class MatrixRing {
-		
-		public final float[] values;
-		public int index;
-		
-		public MatrixRing(float[] values) {
-			this.values = values;
-			this.index = 0;
-		}
+	@FunctionalInterface
+	static interface TriConsumer<A, B, C> {
+		void accept(A a, B b, C c);
+	}
+	
+	static final int min(int x, int y) {
+		return y - (((x - y) >>> 31) & 1) * (y - x);
+	}
+	
+	static final int max(int x, int y) {
+		return x - (((x - y) >>> 31) & 1) * (x - y);
 	}
 	
 	// Forbid anyone to create an instance of this class
 	private MatrixUtils() {
 	}
 	
-	public static final void rotate(float[] matrix, float angle) {
-		int side = (int) FastMath.sqrt(matrix.length) + 1;
-		int maxDepth = side / 2;
-		// 1) Prepare rings to a one-dimensional arrays
-		MatrixRing[] rings = new MatrixRing[maxDepth+1];
-		for(int i = 0, x = 0, y = 0;; ++i) {
-			int _x = x > maxDepth ? maxDepth + maxDepth - x : x;
-			int _y = y > maxDepth ? maxDepth + maxDepth - y : y;
-			int ring = Math.min(_x, _y);
-			MatrixRing _ring = rings[ring];
-			if((_ring == null)) {
-				int ringSide = side - 2 * ring;
-				int len = Math.max(1, 2 * ringSide + 2 * (ringSide - 2));
-				_ring = rings[ring] = new MatrixRing(new float[len]);
-			}
-			_ring.values[_ring.index++] = matrix[i];
-			if((++x == side)) {
-				x = 0;
-				if((++y == side))
-					break;
-			}
+	public static final class MatrixRotator {
+		
+		private final float[] matrix;
+		private final float[][] rings;
+		private final float[] temp;
+		
+		public MatrixRotator(float[] matrix) {
+			this.matrix = matrix;
+			int side = matrixSide(matrix.length);
+			this.rings = createRings(side);
+			this.temp  = new float[ringLength(side, 0)];
 		}
-		// 2) Rotate individual rings
-		for(MatrixRing ring : rings) {
-			int len = ring.values.length;
-			float[] newValues = new float[len];
-			float step = FastMath.ANGLE_360 / len;
-			// Negative because of rotation (+ is CCW, - CW)
-			int shift = (int) (-angle / step);
-			float ratio = (angle % step) / step;
-			// Rotate individual values
-			for(int i = 0; i < len; ++i) {
-				float value = ring.values[i];
-				int k = i + shift;
-				k = k < 0 ? len + k : k >= len ? k % len : k;
-				// TODO: Better interpolation
-				if((ratio != 0.0f)) {
-					int n = k + (shift >= 0 ? -1 : 1);
-					n = n < 0 ? len + n : n >= len ? n % len : n;
-					float valueN = ring.values[n];
-					value = (1.0f - ratio) * value + ratio * valueN;
-				}
-				newValues[k] = value;
-			}
-			System.arraycopy(newValues, 0, ring.values, 0, len);
+		
+		private static final int ringLength(int side, int ring) {
+			return max(1, ((side - (ring << 1)) + (side - ((ring + 1) << 1))) << 1);
 		}
-		// 3) Put the rings back together into a matrix
-		for(int i = 0, l = rings.length; i < l; ++i) {
-			MatrixRing ring = rings[i];
-			for(int k = 0, x = i, y = i, e = side - i;; ++k) {
-				int n = y * side + x;
-				matrix[n] = ring.values[k];
-				// Left most column of the ring
-				if((y != i && y != e -1 && x == i)) {
-					x = side - i - 2;
-				}
-				if((++x == e)) {
-					x = i;
-					if((++y == e))
+		
+		private static final float[][] createRings(int side) {
+			float[][] rings = new float[(side >> 1) + 1][];
+			for(int i = 0, l = rings.length; i < l; ++i)
+				rings[i] = new float[ringLength(side, i)];
+			return rings;
+		}
+		
+		/**
+		 * Computes the index of a matrix ring given by the index of a point
+		 * in its diagonal line and that diagonal's length. The {@code maxd}
+		 * argument is simply {@code side << 1} and is used just not to calculate
+		 * that value over and over.
+		 * @param i The index of a point in its diagonal line
+		 * @param maxd The maximum depth of the diagonal line ({@code side << 1})
+		 * @param side The length of the diagonal line
+		 * @return The index of a matrix ring where the point lies.
+		 */
+		private static final int diagonalRing(int i, int maxd, int side) {
+			// (i < m ? 0 : 2 * (m - i)) + i
+			return (((maxd - i) >>> 31) & 1) * (((maxd - i) << 1) - (1 - (side & 1))) + i
+						// if side is even: i == maxd ? -1 : 0
+						- (1 - ((((maxd - i) >>> 31) & 1) + (((i - maxd) >>> 31) & 1))) * (1 - (side & 1));
+		}
+		
+		/**
+		 * Computes the index of a point {@code [x, y]} in its diagonal line.
+		 * @param x The x-coordinate of a point
+		 * @param y The y-coordinate of a point
+		 * @param side The side length of a matrix
+		 * @return The index of a point in its diagonal line.
+		 */
+		private static final int diagonalIdx(int x, int y, int side) {
+			// (y > side - x - 1 ? 1 : 0) * (side - y - 1 - x) + x
+			return (((side - 1 - x - y) >>> 31) & 1) * (side - y - 1 - x) + x;
+		}
+		
+		/**
+		 * Computes the length of a diagonal line where a point {@code [x, y]} lies.
+		 * @param x The x-coordinate of a point
+		 * @param y The y-coordinate of a point
+		 * @param side The side length of a matrix
+		 * @return The length of a diagonal line.
+		 */
+		private static final int diagonalLen(int x, int y, int side) {
+			// (y > side - x - 1 ? 1 : 0) * (2 * (side - 1 - (x + y))) + (x + y)
+			return (((side - 1 - x - y) >>> 31) & 1) * ((side - 1 - (x + y)) << 1) + (x + y);
+		}
+		
+		private static final int matrixSide(int length) {
+			// Must use Math.sqrt due to arithmetic accuracy
+			return (int) Math.sqrt(length);
+		}
+		
+		private static final float lerp(float x, float y, float t) {
+			return t * y + (1.0f - t) * x;
+		}
+		
+		private static final int index(int i, int l) {
+			return (((i >>> 31) & 1) * l + i) % l;
+		}
+		
+		private final void ringMatrixLoop(TriConsumer<Integer, float[], Integer> callback) {
+			int side = matrixSide(matrix.length);
+			// Prepare auxiliary array for computing inner ring index
+			int[] idxs = new int[((side >> 1) + 1) << 1];
+			for(int i = 1, l = idxs.length; i < l; i += 2)
+				idxs[i] = ringLength(side, i >> 1) - 1;
+			// Fold one-dimensional rings to the matrix
+			for(int i = 0, x = 0, y = 0;; ++i) {
+				// Calculate index of current position's ring
+				int dlen = diagonalLen(x, y, side) + 1;
+				int didx = diagonalIdx(x, y, side);
+				int ring = diagonalRing(didx, dlen >> 1, dlen);
+				// Calculate index of a ring index counter
+				int ridx = (ring << 1) + (((x - y) >>> 31) & 1);
+				// Calculate decrement for current index
+				// Top    row and right column -> +1
+				// Bottom row and left  column -> -1
+				int rdec = ((((x - y) >>> 31) & 1) << 1) - 1;
+				callback.accept(i, rings[ring], idxs[ridx]);
+				idxs[ridx] -= rdec;
+				if((++x == side)) {
+					x = 0;
+					if((++y == side))
 						break;
 				}
 			}
 		}
+		
+		private final void rotate(float[] ring, float rad) {
+			int len = ring.length;
+			System.arraycopy(ring, 0, temp, 0, len);
+			float stp = (FastMath.ANGLE_360 / len);
+			float rat = (Math.abs(rad) % stp) / stp;
+			int inc = rad < 0.0f ? 1 : -1;
+			int shf = (int) (rad / stp);
+			for(int i = 0; i < len; ++i)
+				ring[index(i+shf, len)] = lerp(temp[i], temp[index(i+inc, len)], rat);
+		}
+		
+		public final void unfold() {
+			ringMatrixLoop((mi, ring, ri) -> ring[ri] = matrix[mi]);
+		}
+		
+		public final void fold() {
+			ringMatrixLoop((mi, ring, ri) -> matrix[mi] = ring[ri]);
+		}
+		
+		public final void rotate(float rad) {
+			for(int i = 0, l = rings.length; i < l; ++i)
+				rotate(rings[i], rad);
+		}
+	}
+	
+	public static final void rotate(float[] matrix, float rad) {
+		MatrixRotator rotator = new MatrixRotator(matrix);
+		rotator.unfold();
+		rotator.rotate(rad);
+		rotator.fold();
 	}
 	
 	public static final void printMatrix(float[] matrix) {
-		System.out.println("[");
-		int side = (int) FastMath.sqrt(matrix.length) + 1;
+		printMatrix(matrix, System.out);
+	}
+	
+	public static final void printMatrix(float[] matrix, PrintStream printer) {
+		printer.println("[");
+		// Must use Math.sqrt due to arithmetic accuracy
+		int side = (int) Math.sqrt(matrix.length);
 		for(int i = 0, x = side, y = side;; ++i) {
-			if((x == side)) System.out.print("\t");
-			else            System.out.print(", ");
-			System.out.printf(Locale.US, "%+.5f", matrix[i]);
+			if((x == side)) printer.print("\t");
+			else            printer.print(", ");
+			printer.printf(Locale.US, "%+.5f", matrix[i]);
 			if((--x == 0)) {
 				x = side;
 				if((--y == 0)) {
-					System.out.println();
+					printer.println();
 					break;
 				}
-				System.out.println(",");
+				printer.println(",");
 			}
 		}
-		System.out.println("]");
-	}
-	
-	public static void main(String[] args) {
-		final float[] matrix = {
-			-2.0f, -1.0f,  0.0f,
-			-1.0f,  1.0f,  1.0f,
-			 0.0f,  1.0f,  2.0f
-		};
-		/*final float[] matrix = {
-		     0.1f,  0.1f,  0.1f, 0.1f, 0.1f,
-		     0.1f, -2.0f, -1.0f, 0.0f, 0.1f,
-		     0.1f, -1.0f,  1.0f, 1.0f, 0.1f,
-		     0.1f,  0.0f,  1.0f, 2.0f, 0.1f,
-		     0.1f,  0.1f,  0.1f, 0.1f, 0.1f,
-		};*/
-		float angle = (float) Math.toRadians(1.0f);
-		MatrixUtils.rotate(matrix, angle);
-		printMatrix(matrix);
+		printer.println("]");
 	}
 }
