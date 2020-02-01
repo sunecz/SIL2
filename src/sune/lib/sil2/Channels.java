@@ -13,18 +13,53 @@ public final class Channels {
 	private Channels() {
 	}
 	
-	private static ImagePixelFormat<?> nativePixelFormat;
+	private static InternalChannels<?> nativeInternalChannels;
+	
 	@SuppressWarnings("unchecked")
-	private static final <T extends Buffer> ImagePixelFormat<T> nativePixelFormat() {
-		return (ImagePixelFormat<T>)
-					(nativePixelFormat == null
-						? (nativePixelFormat = ImagePixelFormats.getNativeFormat())
-						: (nativePixelFormat));
+	private static final <T extends Buffer> InternalChannels<T> nativeInternalChannels() {
+		return (InternalChannels<T>) (nativeInternalChannels == null
+					? nativeInternalChannels = new InternalChannels<>(ImagePixelFormats.getNativeFormat())
+					: nativeInternalChannels);
 	}
 	
 	private static final <T extends Buffer> InternalChannels<T> internalChannels(ImagePixelFormat<T> format) {
 		return new InternalChannels<>(format);
 	}
+	
+	private static final <T extends Buffer> int combineMasks(InternalChannels<T> ic, ColorChannel... channels) {
+		return ic.combineMasks(InternalColorChannel.fromMany(ic.getFormat(), channels));
+	}
+	
+	private static final <T extends Buffer> void separate(InternalChannels<T> ic, T input, byte[] output, ColorChannel channel) {
+		ic.separate(input, output, InternalColorChannel.from(ic.getFormat(), channel));
+	}
+	
+	private static final <T extends Buffer> void separate(InternalChannels<T> ic, T input, byte[] output, int shift) {
+		ic.separate(input, output, shift);
+	}
+	
+	private static final <T extends Buffer> void separate(InternalChannels<T> ic, T input,
+			byte[] red, byte[] green, byte[] blue, byte[] alpha) {
+		ic.separate(input, red, green, blue, alpha);
+	}
+	
+	private static final <T extends Buffer> void join(InternalChannels<T> ic, byte[] input, T output) {
+		ic.join(input, output);
+	}
+	
+	private static final <T extends Buffer> void join(InternalChannels<T> ic, byte[] input, T output, int alpha) {
+		ic.join(input, output, alpha);
+	}
+	
+	private static final <T extends Buffer> void join(InternalChannels<T> ic,
+ 			byte[] red, byte[] green, byte[] blue, T output, int alpha) {
+ 		ic.join(red, green, blue, output, alpha);
+ 	}
+	
+	public static final <T extends Buffer> void join(InternalChannels<T> ic,
+ 			byte[] red, byte[] green, byte[] blue, byte[] alpha, T output) {
+ 		ic.join(red, green, blue, alpha, output);
+ 	}
 	
 	/**
 	 * Combines masks of the given color channels to a single mask.
@@ -32,7 +67,7 @@ public final class Channels {
 	 * @param channels The channels
 	 * @return The combined mask*/
 	public static final int combineMasks(ImagePixelFormat<?> pixelFormat, ColorChannel... channels) {
-		return internalChannels(pixelFormat).combineMasks(InternalColorChannel.fromMany(pixelFormat, channels));
+		return combineMasks(internalChannels(pixelFormat), channels);
 	}
 	
 	/**
@@ -40,7 +75,7 @@ public final class Channels {
 	 * @param channels The channels
 	 * @return The combined mask*/
 	public static final int combineMasks(ColorChannel... channels) {
-		return combineMasks(nativePixelFormat(), channels);
+		return combineMasks(nativeInternalChannels(), channels);
 	}
 	
 	/**
@@ -51,7 +86,7 @@ public final class Channels {
 	 * @param output The output
 	 * @param channel The channel to be separated*/
 	public static final <T extends Buffer> void separate(ImagePixelFormat<T> pixelFormat, T input, byte[] output, ColorChannel channel) {
-		internalChannels(pixelFormat).separate(input, output, InternalColorChannel.from(pixelFormat, channel));
+		separate(internalChannels(pixelFormat), input, output, channel);
 	}
 	
 	/**
@@ -61,7 +96,7 @@ public final class Channels {
 	 * @param output The output
 	 * @param channel The channel to be separated*/
 	public static final <T extends Buffer> void separate(T input, byte[] output, ColorChannel channel) {
-		separate(nativePixelFormat(), input, output, channel);
+		separate(nativeInternalChannels(), input, output, channel);
 	}
 	
 	/**
@@ -72,7 +107,7 @@ public final class Channels {
 	 * @param output The output
 	 * @param shift The shift of a channel to be separated*/
 	public static final <T extends Buffer> void separate(ImagePixelFormat<T> pixelFormat, T input, byte[] output, int shift) {
-		internalChannels(pixelFormat).separate(input, output, shift);
+		separate(internalChannels(pixelFormat), input, output, shift);
 	}
 	
 	/**
@@ -82,7 +117,7 @@ public final class Channels {
 	 * @param output The output
 	 * @param shift The shift of a channel to be separated*/
 	public static final <T extends Buffer> void separate(T input, byte[] output, int shift) {
-		separate(nativePixelFormat(), input, output, shift);
+		separate(nativeInternalChannels(), input, output, shift);
 	}
 	
 	/**
@@ -96,7 +131,7 @@ public final class Channels {
 	 * @param alpha The output for alpha channel*/
 	public static final <T extends Buffer> void separate(ImagePixelFormat<T> pixelFormat, T input,
 			byte[] red, byte[] green, byte[] blue, byte[] alpha) {
-		internalChannels(pixelFormat).separate(input, red, green, blue, alpha);
+		separate(internalChannels(pixelFormat), input, red, green, blue, alpha);
 	}
 	
 	/**
@@ -108,7 +143,7 @@ public final class Channels {
 	 * @param blue The output for blue channel
 	 * @param alpha The output for alpha channel*/
 	public static final <T extends Buffer> void separate(T input, byte[] red, byte[] green, byte[] blue, byte[] alpha) {
-		separate(nativePixelFormat(), input, red, green, blue, alpha);
+		separate(nativeInternalChannels(), input, red, green, blue, alpha);
 	}
 	
 	/**
@@ -120,7 +155,7 @@ public final class Channels {
 	 * @param input The input
 	 * @param output The output*/
 	public static final <T extends Buffer> void join(ImagePixelFormat<T> pixelFormat, byte[] input, T output) {
-		internalChannels(pixelFormat).join(input, output);
+		join(internalChannels(pixelFormat), input, output);
 	}
 	
 	/**
@@ -131,7 +166,7 @@ public final class Channels {
 	 * @param input The input
 	 * @param output The output*/
 	public static final <T extends Buffer> void join(byte[] input, T output) {
-		join(nativePixelFormat(), input, output);
+		join(nativeInternalChannels(), input, output);
 	}
 	
 	/**
@@ -145,7 +180,7 @@ public final class Channels {
 	 * @param output The output
 	 * @param alpha The value of the alpha component of all new colors*/
 	public static final <T extends Buffer> void join(ImagePixelFormat<T> pixelFormat, byte[] input, T output, int alpha) {
-		internalChannels(pixelFormat).join(input, output, alpha);
+		join(internalChannels(pixelFormat), input, output, alpha);
 	}
 	
 	/**
@@ -158,7 +193,7 @@ public final class Channels {
 	 * @param output The output
 	 * @param alpha The value of the alpha component of all new colors*/
 	public static final <T extends Buffer> void join(byte[] input, T output, int alpha) {
-		join(nativePixelFormat(), input, output, alpha);
+		join(nativeInternalChannels(), input, output, alpha);
 	}
 	
 	/**
@@ -175,7 +210,7 @@ public final class Channels {
 	 * @param alpha The value of the alpha component of all new colors*/
 	public static final <T extends Buffer> void join(ImagePixelFormat<T> pixelFormat,
 			byte[] red, byte[] green, byte[] blue, T output, int alpha) {
-		internalChannels(pixelFormat).join(red, green, blue, output, alpha);
+		join(internalChannels(pixelFormat), red, green, blue, output, alpha);
 	}
 	
 	/**
@@ -190,7 +225,7 @@ public final class Channels {
 	 * @param output The output
 	 * @param alpha The value of the alpha component of all new colors*/
 	public static final <T extends Buffer> void join(byte[] red, byte[] green, byte[] blue, T output, int alpha) {
-		join(nativePixelFormat(), red, green, blue, output, alpha);
+		join(nativeInternalChannels(), red, green, blue, output, alpha);
 	}
 	
 	/**
@@ -206,7 +241,7 @@ public final class Channels {
 	 * @param output The output*/
 	public static final <T extends Buffer> void join(ImagePixelFormat<T> pixelFormat,
 			byte[] red, byte[] green, byte[] blue, byte[] alpha, T output) {
-		internalChannels(pixelFormat).join(red, green, blue, alpha, output);
+		join(internalChannels(pixelFormat), red, green, blue, alpha, output);
 	}
 	
 	/**
@@ -220,6 +255,6 @@ public final class Channels {
 	 * @param alpha The alpha component input
 	 * @param output The output*/
 	public static final <T extends Buffer> void join(byte[] red, byte[] green, byte[] blue, byte[] alpha, T output) {
-		join(nativePixelFormat(), red, green, blue, alpha, output);
+		join(nativeInternalChannels(), red, green, blue, alpha, output);
 	}
 }

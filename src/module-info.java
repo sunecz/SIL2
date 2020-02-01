@@ -5,4 +5,5 @@ module sune.lib.sil2 {
 	requires javafx.swing;
 	exports sune.lib.sil2;
 	exports sune.lib.sil2.format;
+	exports sune.lib.sil2.operation;
 }
