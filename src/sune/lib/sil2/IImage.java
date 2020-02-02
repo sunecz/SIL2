@@ -30,6 +30,10 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	
 	private WritableImage image;
 	private PlatformImageWrapper wrapper;
+	private int offX;
+	private int offY;
+	private int subWidth;
+	private int subHeight;
 	private int width;
 	private int height;
 	private ImagePixelFormat<T> format;
@@ -137,6 +141,33 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 			for(int i = 2; i < numOfBuffers; ++i)
 				bufferStrategy.prepareBuffer(i);
 		}
+		this.subWidth  = width;
+		this.subHeight = height;
+	}
+	
+	private IImage(IImage<T> iimg, int x, int y, int width, int height) {
+		this.image 	  = iimg.image;
+		this.width 	  = iimg.width;
+		this.height   = iimg.height;
+		this.wrapper  = iimg.wrapper;
+		this.format   = iimg.format;
+		this.original = iimg.original;
+		this.channels = iimg.channels;
+		this.bufferStrategy = iimg.bufferStrategy;
+		this.buffer = iimg.buffer;
+		this.pixels = iimg.pixels;
+		this.ptrPixels = iimg.ptrPixels;
+		this.ptrBuffer = iimg.ptrBuffer;
+		this.offX = x;
+		this.offY = y;
+		this.subWidth = width;
+		this.subHeight = height;
+	}
+	
+	public final IImage<T> subImage(int x, int y, int width, int height) {
+		if((x < offX || y < offY || width > subWidth - (x - offX) || height > subHeight - (y - offY)))
+			throw new IllegalArgumentException();
+		return new IImage<>(this, x, y, width, height);
 	}
 	
 	private static final WritableImage ensureWritableSupported(Image image) {
@@ -235,25 +266,27 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 				T input, T output, int iterations, boolean alphaChannel) {
 			float[] fkernel = checkKernel(kernel);
 			final CounterLock lock = new CounterLock();
-			int x = 0;
-			int y = 0;
-			int w = width  / 4;
-			int h = height / 4;
+			int ex = offX + subWidth;
+			int ey = offY + subHeight;
+			int x = offX;
+			int y = offY;
+			int w = Math.max(subWidth  / 4, 256);
+			int h = Math.max(subHeight / 4, 256);
 			for(int i = 0; i < iterations; ++i) {
 				for(int kx = x, ky = y;;) {
 					int sx = kx;
 					int sy = ky;
-					int sw = kx + w >= width  ? width  - kx : w;
-					int sh = ky + h >= height ? height - ky : h;
+					int sw = kx + w >= ex ? ex - kx : w;
+					int sh = ky + h >= ey ? ey - ky : h;
 					lock.increment();
 					Threads.execute(() -> {
 						convolute2d(sx, sy, sw, sh, width, fkernel,
 							indexes, input, output, alphaChannel);
 						lock.decrement();
 					});
-					if((kx += w) >= width) {
-						kx  = 0;
-						if((ky += h) >= height)
+					if((kx += w) >= ex) {
+						kx  = offX;
+						if((ky += h) >= ey)
 							break;
 					}
 				}
@@ -269,11 +302,11 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		private final void convolute2d(int x, int y, int width, int height, int stride,
 				float[] kernel, int[] indexes, T input, T output, boolean alphaChannel) {
 			float pxa, pxr, pxg, pxb, mul;
-			int imgw = IImage.this.width;
-			int imgh = IImage.this.height;
+			int sx = offX, ex = sx + subWidth;
+			int sy = offY, ey = sy + subHeight;
 			int klen = (int) FastMath.sqrt(kernel.length) / 2;
-			int maxx = clamp(x + width,  klen, IImage.this.width  - klen);
-			int maxy = clamp(y + height, klen, IImage.this.height - klen);
+			int maxx = clamp(x + width,  klen, (ex + offX) - klen);
+			int maxy = clamp(y + height, klen, (ey + offY) - klen);
 			int minx = clamp(x, klen, maxx - 1);
 			int miny = clamp(y, klen, maxy - 1);
 			int neww = maxx - minx;
@@ -335,17 +368,21 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 				}
 			}
 			// Top edge
-			convolute2d_edges(x, 0, width, klen, stride - width,
-							  stride, kernel, indexes, input, output, alphaChannel);
+			if((y <= klen))
+				convolute2d_edges(x, y, width, klen, stride - width + x,
+								  stride, kernel, indexes, input, output, alphaChannel);
 			// Bottom edge
-			convolute2d_edges(x, imgh - klen, width, klen, stride - width,
-							  stride, kernel, indexes, input, output, alphaChannel);
+			if((y + height >= ey - klen - 1))
+				convolute2d_edges(x, y + height - klen, width, klen, stride - width,
+								  stride, kernel, indexes, input, output, alphaChannel);
 			// Left edge
-			convolute2d_edges(0, Math.max(y, klen), klen, height - (y + height >= imgh ? klen : 0), imgw - klen,
-							  stride, kernel, indexes, input, output, alphaChannel);
+			if((x <= klen))
+				convolute2d_edges(x, Math.max(y, klen), klen, height - (y + height >= ey ? klen : y), stride - klen,
+								  stride, kernel, indexes, input, output, alphaChannel);
 			// Right edge
-			convolute2d_edges(imgw - klen, Math.max(y, klen), klen, height - (y + height >= imgh ? klen : 0), imgw - klen,
-							  stride, kernel, indexes, input, output, alphaChannel);
+			if((x + width >= ex - klen - 1))
+				convolute2d_edges(x + width - klen, Math.max(y, klen), klen, height - (y + height >= ey ? klen : y), stride - klen,
+								  stride, kernel, indexes, input, output, alphaChannel);
 		}
 		
 		// Convolute the edges using the Extend method (edge pixels are "copied" over)
@@ -354,8 +391,8 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 			if((w <= 0 || h <= 0)) return; // Nothing to do
 			float pxa, pxr, pxg, pxb, mul;
 			int klen = (int) FastMath.sqrt(kernel.length) + 1;
-			int imgw = IImage.this.width;
-			int imgh = IImage.this.height;
+			int sx = offX, ex = sx + subWidth;
+			int sy = offY, ey = sy + subHeight;
 			int epp  = format.getElementsPerPixel();
 			for(int i = y * stride + x, c = w, r = h, m = indexes.length, ind, clr, kcx, kcy, kh = klen / 2;; ++i) {
 				pxa = 0.0f;
@@ -367,10 +404,10 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 					ind = i + indexes[k];
 					kcx = x + (w - c) + kx;
 					kcy = y + (h - r) + ky;
-					if((kcy < 0))     ind -= kcy * stride; else
-					if((kcy >= imgh)) ind -= (kcy - imgh + 1) * stride;
-					if((kcx < 0))     ind -= kcx; else
-					if((kcx >= imgw)) ind -= kcx - imgw + 1;
+					if((kcy < sy))  ind -= ky * stride; else
+					if((kcy >= ey)) ind -= ky * stride;
+					if((kcx < sx))  ind -= kx; else
+					if((kcx >= ex)) ind -= kx;
 					clr = format.getARGB(input, ind * epp);
 					pxa += ((clr >> 24) & 0xff) * mul;
 					pxr += ((clr >> 16) & 0xff) * mul;
@@ -438,23 +475,25 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 				StructuresConfiguration config) {
 			int[] fStructure = checkStructure(structure);
 			final CounterLock lock = new CounterLock();
-			int x = 0;
-			int y = 0;
-			int w = width  / 4;
-			int h = height / 4;
+			int ex = offX + subWidth;
+			int ey = offY + subHeight;
+			int x = offX;
+			int y = offY;
+			int w = Math.max(subWidth  / 4, 256);
+			int h = Math.max(subHeight / 4, 256);
 			for(int kx = x, ky = y;;) {
 				int sx = kx;
 				int sy = ky;
-				int sw = kx + w >= width  ? width  - kx : w;
-				int sh = ky + h >= height ? height - ky : h;
+				int sw = kx + w >= ex ? ex - kx : w;
+				int sh = ky + h >= ey ? ey - ky : h;
 				lock.increment();
 				Threads.execute(() -> {
 					convolute2d(sx, sy, sw, sh, width, fStructure, indexes, input, output, config);
 					lock.decrement();
 				});
-				if((kx += w) >= width) {
-					kx  = 0;
-					if((ky += h) >= height)
+				if((kx += w) >= ex) {
+					kx  = offX;
+					if((ky += h) >= ey)
 						break;
 				}
 			}
@@ -463,11 +502,11 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		
 		private final void convolute2d(int x, int y, int width, int height, int stride,
 				int[] structure, int[] indexes, T input, T output, StructuresConfiguration config) {
-			int imgw = IImage.this.width;
-			int imgh = IImage.this.height;
+			int sx = offX, ex = sx + subWidth;
+			int sy = offY, ey = sy + subHeight;
 			int slen = (int) FastMath.sqrt(structure.length) / 2;
-			int maxx = clamp(x + width,  slen, IImage.this.width  - slen);
-			int maxy = clamp(y + height, slen, IImage.this.height - slen);
+			int maxx = clamp(x + width,  slen, (ex + offX) - slen);
+			int maxy = clamp(y + height, slen, (ey + offY) - slen);
 			int minx = clamp(x, slen, maxx - 1);
 			int miny = clamp(y, slen, maxy - 1);
 			int neww = maxx - minx;
@@ -494,25 +533,29 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 				}
 			}
 			// Top edge
-			convolute2d_edges(x, 0, width, slen, stride - width,
-							  stride, structure, indexes, input, output, config);
+			if((y <= slen))
+				convolute2d_edges(x, y, width, slen, stride - width + x,
+								  stride, structure, indexes, input, output, config);
 			// Bottom edge
-			convolute2d_edges(x, imgh - slen, width, slen, stride - width,
-							  stride, structure, indexes, input, output, config);
+			if((y + height >= ey - slen - 1))
+				convolute2d_edges(x, y + height - slen, width, slen, stride - width,
+								  stride, structure, indexes, input, output, config);
 			// Left edge
-			convolute2d_edges(0, Math.max(y, slen), slen, height - (y + height >= imgh ? slen : 0), imgw - slen,
-							  stride, structure, indexes, input, output, config);
+			if((x <= slen))
+				convolute2d_edges(x, Math.max(y, slen), slen, height - (y + height >= ey ? slen : y), stride - slen,
+								  stride, structure, indexes, input, output, config);
 			// Right edge
-			convolute2d_edges(imgw - slen, Math.max(y, slen), slen, height - (y + height >= imgh ? slen : 0), imgw - slen,
-							  stride, structure, indexes, input, output, config);
+			if((x + width >= ex - slen - 1))
+				convolute2d_edges(x + width - slen, Math.max(y, slen), slen, height - (y + height >= ey ? slen : y), stride - slen,
+								  stride, structure, indexes, input, output, config);
 		}
 		
 		private final void convolute2d_edges(int x, int y, int w, int h, int d, int stride, int[] structure,
 				int[] indexes, T input, T output, StructuresConfiguration config) {
 			if((w <= 0 || h <= 0)) return; // Nothing to do
 			int slen = (int) FastMath.sqrt(structure.length) + 1;
-			int imgw = IImage.this.width;
-			int imgh = IImage.this.height;
+			int sx = offX, ex = sx + subWidth;
+			int sy = offY, ey = sy + subHeight;
 			int epp  = format.getElementsPerPixel();
 			for(int i = y * stride + x, c = w, r = h, m = indexes.length, ind, kcx, kcy, kh = slen / 2, pxv;; ++i) {
 				if((config.conditionCan.apply(format.getARGB(input, i * epp) & 0xff))) {
@@ -521,10 +564,10 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 						ind = i + indexes[k];
 						kcx = x + (w - c) + kx;
 						kcy = y + (h - r) + ky;
-						if((kcy < 0))     ind -= kcy * stride; else
-						if((kcy >= imgh)) ind -= (kcy - imgh + 1) * stride;
-						if((kcx < 0))     ind -= kcx; else
-						if((kcx >= imgw)) ind -= kcx - imgw + 1;
+						if((kcy < sy))  ind -= ky * stride; else
+						if((kcy >= ey)) ind -= ky * stride;
+						if((kcx < sx))  ind -= kx; else
+						if((kcx >= ex)) ind -= kx;
 						if((structure[k] < BLANK
 								&& config.conditionHas.apply(format.getARGB(input, ind * epp) & 0xff,
 								                             structure[k]))) {
@@ -592,16 +635,18 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		// Applies Summed-area table "operator" to the binary image
 		// https://en.wikipedia.org/wiki/Summed-area_table
 		public final int[] integral(Function<Integer, Integer> function) {
-			int[] array = new int[width * height];
-			for(int i = 0, x = 0, y = 0;; ++i) {
+			int sx = offX, ex = offX + subWidth;
+			int sy = offY, ey = offY + subHeight;
+			int[] array = new int[subWidth * subHeight];
+			for(int x = sx, y = sy, i = y * width + x, k = 0;; ++i, ++k) {
 				int sum = function.apply(format.getARGB(pixels, i) & 0xff);
-				if((x > 0))          sum += array[i - 1];
-				if((y > 0))          sum += array[i - width];
-				if((y > 0 && x > 0)) sum -= array[i - width - 1];
-				array[i] = sum;
-				if((++x == width)) {
-					x = 0;
-					if((++y == height))
+				if((x > sy))           sum += array[k - 1];
+				if((y > sy))           sum += array[k - subWidth];
+				if((y > sy && x > sx)) sum -= array[k - subWidth - 1];
+				array[k] = sum;
+				if((++x == ex)) {
+					x = sx;
+					if((++y == ey))
 						break;
 				}
 			}
@@ -684,21 +729,23 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	@Override
 	public final void applyAreaJob(int x, int y, int width, int height, T input, T output, Job2D<T> job) {
 		final CounterLock lock = new CounterLock();
-		int w = width  / 4;
-		int h = height / 4;
+		int ex = Math.min(x + width, offX + subWidth);
+		int ey = Math.min(y + height, offY + subHeight);
+		int w = Math.max(width  / 4, 256);
+		int h = Math.max(height / 4, 256);
 		for(int kx = x, ky = y;;) {
 			int sx = kx;
 			int sy = ky;
-			int sw = kx + w >= width  ? width  - kx : w;
-			int sh = ky + h >= height ? height - ky : h;
+			int sw = kx + w >= ex ? ex - kx : w;
+			int sh = ky + h >= ey ? ey - ky : h;
 			lock.increment();
 			Threads.execute(() -> {
 				job.execute(sx, sy, sw, sh, input, IImage.this.width, output);
 				lock.decrement();
 			});
-			if((kx += w) >= width) {
-				kx  = 0;
-				if((ky += h) >= height)
+			if((kx += w) >= ex) {
+				kx  = x;
+				if((ky += h) >= ey)
 					break;
 			}
 		}
@@ -750,9 +797,9 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		Object get(int addr);
 	}
 	
-	private static final EmptyVariableStore      VAR_STORE_EMPTY = EmptyVariableStore.INSTANCE;
-	private static final RGBVariableStore        VAR_STORE_RGB   = RGBVariableStore.INSTANCE;
-	private static final FloatVariableStore      VAR_STORE_FLOAT = FloatVariableStore.INSTANCE;
+	private static final EmptyVariableStore VAR_STORE_EMPTY = EmptyVariableStore.INSTANCE;
+	private static final RGBVariableStore   VAR_STORE_RGB   = RGBVariableStore.INSTANCE;
+	private static final FloatVariableStore VAR_STORE_FLOAT = FloatVariableStore.INSTANCE;
 	
 	private static final class EmptyVariableStore implements VariableStore {
 		
@@ -813,15 +860,17 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	private final void applyThreadedAction(T input, T output, VariableStore varStore, ThreadedAction<T> action) {
 		final CounterLock lock = new CounterLock();
 		int epp = format.getElementsPerPixel();
-		int x = 0;
-		int y = 0;
-		int w = width  / 4;
-		int h = height / 4;
+		int ex = offX + subWidth;
+		int ey = offY + subHeight;
+		int x = offX;
+		int y = offY;
+		int w = Math.max(subWidth  / 4, 256);
+		int h = Math.max(subHeight / 4, 256);
 		for(int kx = x, ky = y;;) {
 			int sx = kx;
 			int sy = ky;
-			int sw = kx + w >= width  ? width  - kx : w;
-			int sh = ky + h >= height ? height - ky : h;
+			int sw = kx + w >= ex ? ex - kx : w;
+			int sh = ky + h >= ey ? ey - ky : h;
 			int si = sy * width + sx;
 			int ai = width - sw;
 			lock.increment();
@@ -839,9 +888,9 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 				}
 				lock.decrement();
 			});
-			if((kx += w) >= width) {
-				kx  = 0;
-				if((ky += h) >= height)
+			if((kx += w) >= ex) {
+				kx  = offX;
+				if((ky += h) >= ey)
 					break;
 			}
 		}
@@ -1101,7 +1150,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	 * @param y The y-coordinate of the position
 	 * @param argb The color, as an ARGB int*/
 	public final void setPixel(int x, int y, int argb) {
-		setPixel(y * width + x, argb);
+		setPixel((y + offY) * width + (x + offX), argb);
 	}
 	
 	/**
@@ -1128,7 +1177,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	 * @param y The y-coordinate of the position
 	 * @return The pixel color, as an ARGB int*/
 	public final int getPixel(int x, int y) {
-		return getPixel(y * width + x);
+		return getPixel((y + offY) * width + (x + offX));
 	}
 	
 	/**
@@ -1180,12 +1229,12 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	
 	@Override
 	public final int getX() {
-		return 0;
+		return offX;
 	}
 	
 	@Override
 	public final int getY() {
-		return 0;
+		return offY;
 	}
 	
 	/**
@@ -1193,7 +1242,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	 * @return The width*/
 	@Override
 	public final int getWidth() {
-		return width;
+		return subWidth;
 	}
 	
 	/**
@@ -1201,6 +1250,21 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	 * @return The height*/
 	@Override
 	public final int getHeight() {
+		return subHeight;
+	}
+	
+	@Override
+	public final int getStride() {
+		return width;
+	}
+	
+	@Override
+	public final int getSourceWidth() {
+		return width;
+	}
+	
+	@Override
+	public final int getSourceHeight() {
 		return height;
 	}
 	

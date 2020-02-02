@@ -34,6 +34,9 @@ public final class Transforms {
 		
 		@Override
 		public final int[] execute(IImageContext<T> context) {
+			int stride = context.getStride();
+			int sx = context.getX(), ex = sx + context.getWidth();
+			int sy = context.getY(), ey = sy + context.getHeight();
 			int width = context.getWidth();
 			int height = context.getHeight();
 			ImagePixelFormat<T> format = context.getPixelFormat();
@@ -52,16 +55,16 @@ public final class Transforms {
 			int epp = format.getElementsPerPixel();
 			context.applyActionINT((input, output, i, varStore) -> {
 				boolean canApply = false;
-				int x = i % width;
-				int y = i / width;
+				int x = i % stride;
+				int y = i / stride;
 				int val = format.getARGB(input, i);
 				for(int k = 8; k >= 0; --k) {
 					if((k == 4)) continue;
 					int newx = x + (i % 3) - 1;
 					int newy = y + (i / 3) - 1;
-					if((newx < 0 || newx >= width || newy < 0 || newy >= height))
+					if((newx < sx || newx >= ex || newy < sy || newy >= ey))
 						continue;
-					int pxv = format.getARGB(input, (newy * width + newx) * epp);
+					int pxv = format.getARGB(input, (newy * stride + newx) * epp);
 					if((FastMath.abs(pxv - val) >= minContrast)) {
 						canApply = true; break;
 					}

@@ -26,12 +26,21 @@ public final class ImageOperations {
 		
 		@Override
 		public final int[] execute(IImageContext<T> context) {
+			int stride = context.getStride();
+			int sx = context.getX(), ex = sx + context.getWidth();
+			int sy = context.getY(), ey = sy + context.getHeight();
 			ImagePixelFormat<T> format = context.getPixelFormat();
 			T pixels = context.getPixels();
 			int epp = format.getElementsPerPixel();
-			for(int i = 0, l = pixels.capacity(), level; i < l; i += epp) {
+			for(int x = sx, y = sy, i = (y * stride + x) * epp, d = (stride - (ex - sx)) * epp, level;; i += epp) {
 				level = function.apply(format.getARGB(pixels, i));
 				++histogram[level];
+				if((++x == ex)) {
+					 x  = sx;
+					 i += d;
+					 if((++y == ey))
+						 break;
+				}
 			}
 			return histogram;
 		}
@@ -41,7 +50,7 @@ public final class ImageOperations {
 		
 		@Override
 		public final Float execute(IImageContext<T> context) {
-			int total = context.getPixels().capacity();
+			int total = context.getWidth() * context.getHeight();
 			int[] histogram = new Histogram<T>(new int[256], Colors::grayscale).execute(context);
 			int sum = 0;
 			for(int i = 1; i < 256; ++i)

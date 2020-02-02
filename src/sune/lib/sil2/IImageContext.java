@@ -42,4 +42,7 @@ public interface IImageContext<T extends Buffer> {
 	int getY();
 	int getWidth();
 	int getHeight();
+	int getStride();
+	int getSourceWidth();
+	int getSourceHeight();
 }
