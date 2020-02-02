@@ -732,8 +732,8 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	@Override
 	public final void applyAreaJob(int x, int y, int width, int height, T input, T output, Job2D<T> job) {
 		final CounterLock lock = new CounterLock();
-		int ex = Math.min(width, Math.min(x + width, offX + subWidth));
-		int ey = Math.min(height, Math.min(y + height, offY + subHeight));
+		int ex = Math.min(IImage.this.width, Math.min(x + width, offX + subWidth));
+		int ey = Math.min(IImage.this.height, Math.min(y + height, offY + subHeight));
 		int w = Math.max(width  / 4, 256);
 		int h = Math.max(height / 4, 256);
 		for(int kx = x, ky = y;;) {
