@@ -393,7 +393,6 @@ public final class Filters {
 			int sx = context.getX(), ex = sx + context.getWidth();
 			int sy = context.getY(), ey = sy + context.getHeight();
 			int width = context.getWidth();
-			int height = context.getHeight();
 			int swidth = context.getSourceWidth();
 			int sheight = context.getSourceHeight();
 			T pixels = context.getPixels();
@@ -412,9 +411,9 @@ public final class Filters {
 				}
 			}
 			int tx = Math.max(1, sx), ty = Math.max(1, sy);
-			int ux = Math.min(swidth - 2, ex), uy = Math.min(sheight - 2, ey);
+			int ux = Math.min(swidth - 1, ex), uy = Math.min(sheight - 1, ey);
 			// Do the actual Sobel filtering
-			context.applyAreaJob(tx, ty, ux, uy, buffer, pixels, (rx, ry, rw, rh, input, stride, output) -> {
+			context.applyAreaJob(tx, ty, ux - tx, uy - ty, buffer, pixels, (rx, ry, rw, rh, input, stride, output) -> {
 				for(int i = ry * stride + rx, ii = stride - rw, x = rw, y = rh, gx, gy;;) {
 					// Sobel x-kernel and y-kernel pass
 					gx = -2 * format.get(input, (i - 1) * epp)
@@ -514,7 +513,7 @@ public final class Filters {
 			}
 			// Left line
 			if((sx == 0)) {
-				context.applyLineVJob(sx, Math.max(sy, 1), height - 2, buffer, pixels, (i, x, y, input, stride, output) -> {
+				context.applyLineVJob(sx, ty, uy - ty, buffer, pixels, (i, x, y, input, stride, output) -> {
 					int gx, gy;
 					// Sobel x-kernel and y-kernel pass
 					gx = -2 * format.get(input, (i) * epp)
@@ -535,7 +534,7 @@ public final class Filters {
 			}
 			// Right line
 			if((ex == swidth)) {
-				context.applyLineVJob(ex - 1, Math.max(sy, 1), height - 2, buffer, pixels, (i, x, y, input, stride, output) -> {
+				context.applyLineVJob(ex - 1, ty, uy - ty, buffer, pixels, (i, x, y, input, stride, output) -> {
 					int gx, gy;
 					// Sobel x-kernel and y-kernel pass
 					gx = -2 * format.get(input, (i - 1) * epp)
