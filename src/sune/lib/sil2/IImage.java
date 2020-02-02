@@ -28,6 +28,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	private static final float F2I = 255.0f;
 	private static final float I2F = 1.0f / 255.0f;
 	
+	private final IImage<T> parent;
 	private WritableImage image;
 	private PlatformImageWrapper wrapper;
 	private int offX;
@@ -143,6 +144,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		}
 		this.subWidth  = width;
 		this.subHeight = height;
+		this.parent = null;
 	}
 	
 	private IImage(IImage<T> iimg, int x, int y, int width, int height) {
@@ -162,6 +164,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		this.offY = y;
 		this.subWidth = width;
 		this.subHeight = height;
+		this.parent = iimg;
 	}
 	
 	public final IImage<T> subImage(int x, int y, int width, int height) {
@@ -729,8 +732,8 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	@Override
 	public final void applyAreaJob(int x, int y, int width, int height, T input, T output, Job2D<T> job) {
 		final CounterLock lock = new CounterLock();
-		int ex = Math.min(x + width, offX + subWidth);
-		int ey = Math.min(y + height, offY + subHeight);
+		int ex = Math.min(width, Math.min(x + width, offX + subWidth));
+		int ey = Math.min(height, Math.min(y + height, offY + subHeight));
 		int w = Math.max(width  / 4, 256);
 		int h = Math.max(height / 4, 256);
 		for(int kx = x, ky = y;;) {
@@ -993,18 +996,27 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		bufferStrategy.swap(ptrBuffer, ptrPixels);
 		ptrBuffer = 1 - ptrBuffer;
 		ptrPixels = 1 - ptrPixels;
+		// Must propagate the changes to the parent as well
+		if((parent != null)) {
+			parent.pixels = pixels;
+			parent.buffer = buffer;
+			parent.ptrBuffer = ptrBuffer;
+			parent.ptrPixels = ptrPixels;
+		}
 	}
 	
 	/**
 	 * Writes all the changes to the underlying JavaFX image.*/
 	public final void apply() {
 		try {
+			int epp = format.getElementsPerPixel();
+			int str = width * epp;
 			int numOfBuffers = bufferStrategy.numberOfBuffers();
 			// Special case for 1 buffer
 			if((numOfBuffers == 1)) {
 				// Must copy only if the buffers are swapped incorrectly
 				if((buffer == original)) {
-					BufferUtils.buffercopy(pixels, original);
+					Pixels.copy(pixels, offX, offY, str, original, offX, offY, str, subWidth, subHeight, epp);
 					swapBuffer();
 				}
 			} else {
@@ -1013,7 +1025,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 				for(int i = numOfBuffers; i > 1; --i) {
 					src = bufferStrategy.getBuffer(i - 1);
 					dst = bufferStrategy.getBuffer(i);
-					BufferUtils.buffercopy(src, dst);
+					Pixels.copy(src, offX, offY, str, dst, offX, offY, str, subWidth, subHeight, epp);
 				}
 			}
 			// Update the internal JavaFX image, so that changes are apparent
