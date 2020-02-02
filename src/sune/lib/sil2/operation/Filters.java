@@ -56,8 +56,8 @@ public final class Filters {
 		@Override
 		public final Void execute(IImageContext<T> context) {
 			FastBlur.boxBlur(context.getPixels(), context.getBuffer(),
-				0, 0, context.getWidth(), context.getHeight(), value, context.getWidth(),
-				context.getChannels(), premultiply);
+				context.getX(), context.getY(), context.getWidth(), context.getHeight(), value,
+				context.getStride(), context.getChannels(), premultiply);
 			context.swapBuffer();
 			return null;
 		}
@@ -84,8 +84,8 @@ public final class Filters {
 		@Override
 		public final Void execute(IImageContext<T> context) {
 			FastBlur.gaussianBlur(context.getPixels(), context.getBuffer(),
-				0, 0, context.getWidth(), context.getHeight(), value, context.getWidth(),
-				context.getChannels(), premultiply);
+  				context.getX(), context.getY(), context.getWidth(), context.getHeight(), value,
+				context.getStride(), context.getChannels(), premultiply);
 			context.swapBuffer();
 			return null;
 		}
@@ -114,28 +114,29 @@ public final class Filters {
 		
 		@Override
 		public final Void execute(IImageContext<T> context) {
-			int width = context.getWidth();
-			int height = context.getHeight();
+			int stride = context.getStride();
+			int sx = context.getX(), ex = sx + context.getWidth();
+			int sy = context.getY(), ey = sy + context.getHeight();
 			ImagePixelFormat<T> format = context.getPixelFormat();
 			T pixels = context.getPixels();
 			int cos = FastMath.round(value * FastMath.cosDeg(angleDeg));
 			int sin = FastMath.round(value * FastMath.sinDeg(angleDeg));
 			int epp = format.getElementsPerPixel();
 			context.applyActionINT((input, output, index, varStore) -> {
-				int x = (index / epp) % width, y = (index / epp) / width;
-				int sx = x + cos, sy = y + sin;
-				int ex = x - cos, ey = y - sin;
+				int x = (index / epp) % stride, y = (index / epp) / stride;
+				int tx = x + cos, ty = y + sin;
+				int ux = x - cos, uy = y - sin;
 				int suma = 0, sumr = 0, sumg = 0, sumb = 0;
 				int idiv = 0, iclr;
 				// Bresenham's line algorithm
-				int dx = Math.abs(ex - sx);
-				int dy = Math.abs(ey - sy);
+				int dx = Math.abs(ux - tx);
+				int dy = Math.abs(uy - ty);
 				int qx = dx;
 				int qy = dy;
-				int px = sx;
-				int py = sy;
-				int ix = ex < sx ? -1 : +1;
-				int iy = ey < sy ? -1 : +1;
+				int px = tx;
+				int py = ty;
+				int ix = ux < tx ? -1 : +1;
+				int iy = uy < ty ? -1 : +1;
 				if((dx >= dy)) {
 					for(int i = 0; i <= dx; i++) {
 						if((qy += dy) >= dx) {
@@ -144,9 +145,9 @@ public final class Filters {
 						}
 						px += ix;
 						// Get the pixel's color components and add them to the sums
-						if((px >= 0 && py >= 0 && px < width && py < height)) {
-							if((premultiply)) iclr = format.getARGBPre(pixels, (py * width + px) * epp);
-							else              iclr = format.getARGB   (pixels, (py * width + px) * epp);
+						if((px >= sx && py >= sy && px < ex && py < ey)) {
+							if((premultiply)) iclr = format.getARGBPre(pixels, (py * stride + px) * epp);
+							else              iclr = format.getARGB   (pixels, (py * stride + px) * epp);
 							suma += (iclr >> 24) & 0xff;
 							sumr += (iclr >> 16) & 0xff;
 							sumg += (iclr >>  8) & 0xff;
@@ -162,9 +163,9 @@ public final class Filters {
 						}
 						py += iy;
 						// Get the pixel's color components and add them to the sums
-						if((px >= 0 && py >= 0 && px < width && py < height)) {
-							if((premultiply)) iclr = format.getARGBPre(pixels, (py * width + px) * epp);
-							else              iclr = format.getARGB   (pixels, (py * width + px) * epp);
+						if((px >= sx && py >= sy && px < ex && py < ey)) {
+							if((premultiply)) iclr = format.getARGBPre(pixels, (py * stride + px) * epp);
+							else              iclr = format.getARGB   (pixels, (py * stride + px) * epp);
 							suma += (iclr >> 24) & 0xff;
 							sumr += (iclr >> 16) & 0xff;
 							sumg += (iclr >>  8) & 0xff;
@@ -197,14 +198,15 @@ public final class Filters {
 		
 		@Override
 		public final Void execute(IImageContext<T> context) {
-			int width = context.getWidth();
-			int height = context.getHeight();
+			int stride = context.getStride();
+			int sx = context.getX(), ex = sx + context.getWidth();
+			int sy = context.getY(), ey = sy + context.getHeight();
 			ImagePixelFormat<T> format = context.getPixelFormat();
 			int epp = format.getElementsPerPixel();
 			context.applyActionRGB((rgb, input, output, index, varStore) -> {
-				int x = (index / epp) % width, y = (index / epp) / width;
-				boolean isl = x > 0, isr = x < width  - 1;
-				boolean ist = y > 0, isb = y < height - 1;
+				int x = (index / epp) % stride, y = (index / epp) / stride;
+				boolean isl = x > sx, isr = x < ex - 1;
+				boolean ist = y > sy, isb = y < ey - 1;
 				int curr = rgb[0], curg = rgb[1], curb = rgb[2];
 				int crsr = curr,   crsg = curg,   crsb = curb;
 				int iclr, divc = 1;
@@ -216,14 +218,14 @@ public final class Filters {
 					crsb += (iclr)       & 0xff;
 					++divc;
 					if((ist)) {
-						iclr = format.getARGB(input, index - width * epp - epp);
+						iclr = format.getARGB(input, index - stride * epp - epp);
 						crsr += (iclr >> 16) & 0xff;
 						crsg += (iclr >>  8) & 0xff;
 						crsb += (iclr)       & 0xff;
 						++divc;
 					}
 					if((isb)) {
-						iclr = format.getARGB(input, index + width * epp - epp);
+						iclr = format.getARGB(input, index + stride * epp - epp);
 						crsr += (iclr >> 16) & 0xff;
 						crsg += (iclr >>  8) & 0xff;
 						crsb += (iclr)       & 0xff;
@@ -237,14 +239,14 @@ public final class Filters {
 					crsb += (iclr)       & 0xff;
 					++divc;
 					if((ist)) {
-						iclr = format.getARGB(input, index - width * epp + epp);
+						iclr = format.getARGB(input, index - stride * epp + epp);
 						crsr += (iclr >> 16) & 0xff;
 						crsg += (iclr >>  8) & 0xff;
 						crsb += (iclr)       & 0xff;
 						++divc;
 					}
 					if((isb)) {
-						iclr = format.getARGB(input, index + width * epp + epp);
+						iclr = format.getARGB(input, index + stride * epp + epp);
 						crsr += (iclr >> 16) & 0xff;
 						crsg += (iclr >>  8) & 0xff;
 						crsb += (iclr)       & 0xff;
@@ -252,14 +254,14 @@ public final class Filters {
 					}
 				}
 				if((ist)) {
-					iclr = format.getARGB(input, index - width * epp);
+					iclr = format.getARGB(input, index - stride * epp);
 					crsr += (iclr >> 16) & 0xff;
 					crsg += (iclr >>  8) & 0xff;
 					crsb += (iclr)       & 0xff;
 					++divc;
 				}
 				if((isb)) {
-					iclr = format.getARGB(input, index + width * epp);
+					iclr = format.getARGB(input, index + stride * epp);
 					crsr += (iclr >> 16) & 0xff;
 					crsg += (iclr >>  8) & 0xff;
 					crsb += (iclr)       & 0xff;
@@ -388,17 +390,31 @@ public final class Filters {
 		
 		@Override
 		public final Void execute(IImageContext<T> context) {
+			int sx = context.getX(), ex = sx + context.getWidth();
+			int sy = context.getY(), ey = sy + context.getHeight();
 			int width = context.getWidth();
 			int height = context.getHeight();
+			int swidth = context.getSourceWidth();
+			int sheight = context.getSourceHeight();
 			T pixels = context.getPixels();
 			T buffer = context.getBuffer();
 			ImagePixelFormat<T> format = context.getPixelFormat();
 			int epp = format.getElementsPerPixel();
 			// Precompute the grayscale values of the pixels
-			for(int i = 0, l = buffer.capacity(); i < l; i += epp)
+			int str = context.getStride();
+			for(int x = sx, y = sy, i = (y * str + x) * epp, d = (str - (ex - sx)) * epp;; i += epp) {
 				format.set(buffer, i, Colors.grayscale(format.getARGB(buffer, i)));
+				if((++x == ex)) {
+					 x  = sx;
+					 i += d;
+					 if((++y == ey))
+						 break;
+				}
+			}
+			int tx = Math.max(1, sx), ty = Math.max(1, sy);
+			int ux = Math.min(swidth - 2, ex), uy = Math.min(sheight - 2, ey);
 			// Do the actual Sobel filtering
-			context.applyAreaJob(1, 1, width - 1, height - 1, buffer, pixels, (rx, ry, rw, rh, input, stride, output) -> {
+			context.applyAreaJob(tx, ty, ux, uy, buffer, pixels, (rx, ry, rw, rh, input, stride, output) -> {
 				for(int i = ry * stride + rx, ii = stride - rw, x = rw, y = rh, gx, gy;;) {
 					// Sobel x-kernel and y-kernel pass
 					gx = -2 * format.get(input, (i - 1) * epp)
@@ -429,107 +445,115 @@ public final class Filters {
 			 * there all along. This is only done virtually, no pixels are
 			 * actually being copied.*/
 			// Top line
-			context.applyLineHJob(0, 0, width, buffer, pixels, (i, x, y, input, stride, output) -> {
-				int gx, gy;
-				// Sobel x-kernel and y-kernel pass
-				gx = 0;
-				gy = -2 * format.get(input, (i) * epp)
-					 +2 * format.get(input, (i + stride) * epp);
-				if((x == 0)) {
-					gx += -3 * format.get(input, (i) * epp)
-						  -1 * format.get(input, (i + stride) * epp);
-					gy += -1 * format.get(input, (i) * epp)
-						  +1 * format.get(input, (i + stride) * epp);
-				} else {
-					gx += -3 * format.get(input, (i - 1) * epp)
-						  -1 * format.get(input, (i + stride - 1) * epp);
-					gy += -1 * format.get(input, (i - 1) * epp)
-						  +1 * format.get(input, (i + stride - 1) * epp);
-				}
-				if((x == width - 1)) {
-					gx += +3 * format.get(input, (i) * epp)
-						  +1 * format.get(input, (i + stride) * epp);
-					gy += -1 * format.get(input, (i) * epp)
-						  +1 * format.get(input, (i + stride) * epp);
-				} else {
-					gx += +3 * format.get(input, (i + 1) * epp)
-						  +1 * format.get(input, (i + stride + 1) * epp);
-					gy += -1 * format.get(input, (i + 1) * epp)
-						  +1 * format.get(input, (i + stride + 1) * epp);
-				}
-				// The Sobel value from normalized magnitude and direction
-				format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
-			});
+			if((sy == 0)) {
+				context.applyLineHJob(sx, sy, width, buffer, pixels, (i, x, y, input, stride, output) -> {
+					int gx, gy;
+					// Sobel x-kernel and y-kernel pass
+					gx = 0;
+					gy = -2 * format.get(input, (i) * epp)
+						 +2 * format.get(input, (i + stride) * epp);
+					if((x == 0)) {
+						gx += -3 * format.get(input, (i) * epp)
+							  -1 * format.get(input, (i + stride) * epp);
+						gy += -1 * format.get(input, (i) * epp)
+							  +1 * format.get(input, (i + stride) * epp);
+					} else {
+						gx += -3 * format.get(input, (i - 1) * epp)
+							  -1 * format.get(input, (i + stride - 1) * epp);
+						gy += -1 * format.get(input, (i - 1) * epp)
+							  +1 * format.get(input, (i + stride - 1) * epp);
+					}
+					if((x == swidth - 1)) {
+						gx += +3 * format.get(input, (i) * epp)
+							  +1 * format.get(input, (i + stride) * epp);
+						gy += -1 * format.get(input, (i) * epp)
+							  +1 * format.get(input, (i + stride) * epp);
+					} else {
+						gx += +3 * format.get(input, (i + 1) * epp)
+							  +1 * format.get(input, (i + stride + 1) * epp);
+						gy += -1 * format.get(input, (i + 1) * epp)
+							  +1 * format.get(input, (i + stride + 1) * epp);
+					}
+					// The Sobel value from normalized magnitude and direction
+					format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
+				});
+			}
 			// Bottom line
-			context.applyLineHJob(0, height - 1, width, buffer, pixels, (i, x, y, input, stride, output) -> {
-				int gx, gy;
-				// Sobel x-kernel and y-kernel pass
-				gx = 0;
-				gy = -2 * format.get(input, (i - stride) * epp)
-					 +2 * format.get(input, (i) * epp);
-				if((x == 0)) {
-					gx += -3 * format.get(input, (i) * epp)
-						  -1 * format.get(input, (i - stride) * epp);
-					gy += -1 * format.get(input, (i - stride) * epp)
-						  +1 * format.get(input, (i) * epp);
-				} else {
-					gx += -3 * format.get(input, (i - 1) * epp)
-						  -1 * format.get(input, (i - stride - 1) * epp);
-					gy += -1 * format.get(input, (i - stride - 1) * epp)
-						  +1 * format.get(input, (i - 1) * epp);
-				}
-				if((x == width - 1)) {
-					gx += +3 * format.get(input, (i) * epp)
-						  +1 * format.get(input, (i - stride) * epp);
-					gy += -1 * format.get(input, (i - stride) * epp)
-						  +1 * format.get(input, (i) * epp);
-				} else {
-					gx += +3 * format.get(input, (i + 1) * epp)
-						  +1 * format.get(input, (i - stride + 1) * epp);
-					gy += -1 * format.get(input, (i - stride + 1) * epp)
-						  +1 * format.get(input, (i + 1) * epp);
-				}
-				// The Sobel value from normalized magnitude and direction
-				format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
-			});
+			if((ey == sheight)) {
+				context.applyLineHJob(sx, ey - 1, width, buffer, pixels, (i, x, y, input, stride, output) -> {
+					int gx, gy;
+					// Sobel x-kernel and y-kernel pass
+					gx = 0;
+					gy = -2 * format.get(input, (i - stride) * epp)
+						 +2 * format.get(input, (i) * epp);
+					if((x == 0)) {
+						gx += -3 * format.get(input, (i) * epp)
+							  -1 * format.get(input, (i - stride) * epp);
+						gy += -1 * format.get(input, (i - stride) * epp)
+							  +1 * format.get(input, (i) * epp);
+					} else {
+						gx += -3 * format.get(input, (i - 1) * epp)
+							  -1 * format.get(input, (i - stride - 1) * epp);
+						gy += -1 * format.get(input, (i - stride - 1) * epp)
+							  +1 * format.get(input, (i - 1) * epp);
+					}
+					if((x == swidth - 1)) {
+						gx += +3 * format.get(input, (i) * epp)
+							  +1 * format.get(input, (i - stride) * epp);
+						gy += -1 * format.get(input, (i - stride) * epp)
+							  +1 * format.get(input, (i) * epp);
+					} else {
+						gx += +3 * format.get(input, (i + 1) * epp)
+							  +1 * format.get(input, (i - stride + 1) * epp);
+						gy += -1 * format.get(input, (i - stride + 1) * epp)
+							  +1 * format.get(input, (i + 1) * epp);
+					}
+					// The Sobel value from normalized magnitude and direction
+					format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
+				});
+			}
 			// Left line
-			context.applyLineVJob(0, 1, height - 2, buffer, pixels, (i, x, y, input, stride, output) -> {
-				int gx, gy;
-				// Sobel x-kernel and y-kernel pass
-				gx = -2 * format.get(input, (i) * epp)
-					 -1 * format.get(input, (i - stride) * epp)
-					 -1 * format.get(input, (i + stride) * epp)
-					 +2 * format.get(input, (i + 1) * epp)
-					 +1 * format.get(input, (i - stride + 1) * epp)
-					 +1 * format.get(input, (i + stride + 1) * epp);
-				gy = -2 * format.get(input, (i - stride) * epp)
-					 -1 * format.get(input, (i - stride) * epp)
-					 +1 * format.get(input, (i + stride) * epp)
-					 +2 * format.get(input, (i + stride) * epp)
-					 -1 * format.get(input, (i - stride + 1) * epp)
-					 +1 * format.get(input, (i + stride + 1) * epp);
-				// The Sobel value from normalized magnitude and direction
-				format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
-			});
+			if((sx == 0)) {
+				context.applyLineVJob(sx, Math.max(sy, 1), height - 2, buffer, pixels, (i, x, y, input, stride, output) -> {
+					int gx, gy;
+					// Sobel x-kernel and y-kernel pass
+					gx = -2 * format.get(input, (i) * epp)
+						 -1 * format.get(input, (i - stride) * epp)
+						 -1 * format.get(input, (i + stride) * epp)
+						 +2 * format.get(input, (i + 1) * epp)
+						 +1 * format.get(input, (i - stride + 1) * epp)
+						 +1 * format.get(input, (i + stride + 1) * epp);
+					gy = -2 * format.get(input, (i - stride) * epp)
+						 -1 * format.get(input, (i - stride) * epp)
+						 +1 * format.get(input, (i + stride) * epp)
+						 +2 * format.get(input, (i + stride) * epp)
+						 -1 * format.get(input, (i - stride + 1) * epp)
+						 +1 * format.get(input, (i + stride + 1) * epp);
+					// The Sobel value from normalized magnitude and direction
+					format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
+				});
+			}
 			// Right line
-			context.applyLineVJob(width - 1, 1, height - 2, buffer, pixels, (i, x, y, input, stride, output) -> {
-				int gx, gy;
-				// Sobel x-kernel and y-kernel pass
-				gx = -2 * format.get(input, (i - 1) * epp)
-					 -1 * format.get(input, (i - stride - 1) * epp)
-					 -1 * format.get(input, (i + stride - 1) * epp)
-					 +2 * format.get(input, (i) * epp)
-					 +1 * format.get(input, (i - stride) * epp)
-					 +1 * format.get(input, (i + stride) * epp);
-				gy = -2 * format.get(input, (i - stride) * epp)
-					 -1 * format.get(input, (i - stride - 1) * epp)
-					 +1 * format.get(input, (i + stride - 1) * epp)
-					 +2 * format.get(input, (i + stride) * epp)
-					 -1 * format.get(input, (i - stride) * epp)
-					 +1 * format.get(input, (i + stride) * epp);
-				// The Sobel value from normalized magnitude and direction
-				format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
-			});
+			if((ex == swidth)) {
+				context.applyLineVJob(ex - 1, Math.max(sy, 1), height - 2, buffer, pixels, (i, x, y, input, stride, output) -> {
+					int gx, gy;
+					// Sobel x-kernel and y-kernel pass
+					gx = -2 * format.get(input, (i - 1) * epp)
+						 -1 * format.get(input, (i - stride - 1) * epp)
+						 -1 * format.get(input, (i + stride - 1) * epp)
+						 +2 * format.get(input, (i) * epp)
+						 +1 * format.get(input, (i - stride) * epp)
+						 +1 * format.get(input, (i + stride) * epp);
+					gy = -2 * format.get(input, (i - stride) * epp)
+						 -1 * format.get(input, (i - stride - 1) * epp)
+						 +1 * format.get(input, (i + stride - 1) * epp)
+						 +2 * format.get(input, (i + stride) * epp)
+						 -1 * format.get(input, (i - stride) * epp)
+						 +1 * format.get(input, (i + stride) * epp);
+					// The Sobel value from normalized magnitude and direction
+					format.setARGB(output, i * epp, Colors.sobelXY(gx, gy));
+				});
+			}
 			return null;
 		}
 	}

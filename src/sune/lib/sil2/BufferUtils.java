@@ -212,9 +212,12 @@ public final class BufferUtils {
 	 * @param buf Buffer
 	 * @return Newly allocated buffer of the same type as {@code buf}.
 	 */
-	@SuppressWarnings("unchecked")
 	public static final <T extends Buffer> T newBufferOfType(T buf) {
-		int capacity = buf.capacity();
+		return newBufferOfType(buf, buf.capacity());
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static final <T extends Buffer> T newBufferOfType(T buf, int capacity) {
 		if((buf instanceof ByteBuffer))   return (T) ByteBuffer  .allocate(capacity);
 		if((buf instanceof CharBuffer))   return (T) CharBuffer  .allocate(capacity);
 		if((buf instanceof ShortBuffer))  return (T) ShortBuffer .allocate(capacity);
@@ -231,9 +234,13 @@ public final class BufferUtils {
 	 * @param buf Buffer
 	 * @return Newly allocated direct buffer of the same type as {@code buf}.
 	 */
-	@SuppressWarnings("unchecked")
 	public static final <T extends Buffer> T newDirectBufferOfType(T buf) {
-		ByteBuffer alc = ByteBuffer.allocateDirect(buf.capacity());
+		return newDirectBufferOfType(buf, buf.capacity());
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static final <T extends Buffer> T newDirectBufferOfType(T buf, int capacity) {
+		ByteBuffer alc = ByteBuffer.allocateDirect(capacity);
 		if((buf instanceof ByteBuffer))   return (T) alc; // Fast return
 		if((buf instanceof CharBuffer))   return (T) alc.asCharBuffer();
 		if((buf instanceof ShortBuffer))  return (T) alc.asShortBuffer();

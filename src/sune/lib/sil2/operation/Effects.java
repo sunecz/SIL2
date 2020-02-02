@@ -27,13 +27,13 @@ public final class Effects {
 	 * @param color The color, as an ARGB int*/
 	public static final class Shadow2D<T extends Buffer> implements IImageOperation<T, Void> {
 		
-		private final float angle;
+		private final float rad;
 		private final float distX;
 		private final float distY;
 		private final int color;
 		
-		public Shadow2D(float angle, float distX, float distY, int color) {
-			this.angle = angle;
+		public Shadow2D(float rad, float distX, float distY, int color) {
+			this.rad   = rad;
 			this.distX = distX;
 			this.distY = distY;
 			this.color = color;
@@ -41,35 +41,41 @@ public final class Effects {
 		
 		@Override
 		public final Void execute(IImageContext<T> context) {
-			int width = context.getWidth();
-			int height = context.getHeight();
+			int stride = context.getStride();
+			int sx = context.getX(), ex = sx + context.getWidth();
+			int sy = context.getY(), ey = sy + context.getHeight();
 			ImagePixelFormat<T> format = context.getPixelFormat();
 			T pixels = context.getPixels();
 			T buffer = context.getBuffer();
 			int epp = format.getElementsPerPixel();
 			BufferUtils.fill(buffer, 0x0, epp);
 			// Produce the image's shadow of transparency and store it in output
-			float dx = FastMath.cos(angle) * distX;
-			float dy = FastMath.sin(angle) * distY;
-			float x = dx, y = dy;
-			for(int i = 0, k = width;; i += epp) {
-				if((x >= 0 && x < width) && (y >= 0 && y < height)) {
+			float dx = FastMath.cos(rad) * distX, fx;
+			float dy = FastMath.sin(rad) * distY, fy;
+			for(int x = sx, y = sy, i = (y * stride + x) * epp, d = (stride - (ex - sx)) * epp;; i += epp) {
+				fx = x + dx;
+				fy = y + dy;
+				if((fx >= sx && fx < ex) && (fy >= sy && fy < ey)) {
 					if((format.getARGB(pixels, i) >>> 24) != 0x0) {
-						format.setARGB(buffer, ((int) y * width + (int) x) * epp, color);
+						format.setARGB(buffer, ((int) fy * stride + (int) fx) * epp, color);
 					}
 				}
-				++x;
-				if((--k == 0)) {
-					 k = width;
-					 x = dx;
-					 if((++y >= height))
+				if((++x == ex)) {
+					 x  = sx;
+					 i += d;
+					 if((++y == ey))
 						 break;
 				}
 			}
 			// Combine the image's pixels and the shadow's pixels (with blending)
-			for(int i = 0, l = pixels.capacity(); i < l; i += epp) {
-				format.setARGB(pixels, i, Colors.blend(format.getARGB(pixels, i),
-				                                       format.getARGB(buffer, i)));
+			for(int x = sx, y = sy, i = (y * stride + x) * epp, d = (stride - (ex - sx)) * epp;; i += epp) {
+				format.setARGB(pixels, i, Colors.blend(format.getARGB(pixels, i), format.getARGB(buffer, i)));
+				if((++x == ex)) {
+					 x  = sx;
+					 i += d;
+					 if((++y == ey))
+						 break;
+				}
 			}
 			return null;
 		}

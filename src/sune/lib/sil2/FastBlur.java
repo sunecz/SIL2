@@ -68,25 +68,25 @@ public final class FastBlur {
 		Threads.execute(() -> {
 			byte[] inputR = new byte[length];
 			channels.separate(input, inputR, channels.getFormat().getShiftR(), false);
-			boxBlur(inputR, outputR, 0, 0, w, h, r, s);
+			boxBlur(inputR, outputR, x, y, w, h, r, s);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
 			byte[] inputG = new byte[length];
 			channels.separate(input, inputG, channels.getFormat().getShiftG(), false);
-			boxBlur(inputG, outputG, 0, 0, w, h, r, s);
+			boxBlur(inputG, outputG, x, y, w, h, r, s);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
 			byte[] inputB = new byte[length];
 			channels.separate(input, inputB, channels.getFormat().getShiftB(), false);
-			boxBlur(inputB, outputB, 0, 0, w, h, r, s);
+			boxBlur(inputB, outputB, x, y, w, h, r, s);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
 			byte[] inputA = new byte[length];
 			channels.separate(input, inputA, channels.getFormat().getShiftA(), false);
-			boxBlur(inputA, outputA, 0, 0, w, h, r, s);
+			boxBlur(inputA, outputA, x, y, w, h, r, s);
 			lock.decrement();
 		});
 		lock.await();
