@@ -6,8 +6,8 @@ import java.util.function.Function;
 import sune.lib.sil2.IImage.ActionFloat;
 import sune.lib.sil2.IImage.ActionINT;
 import sune.lib.sil2.IImage.ActionRGB;
-import sune.lib.sil2.IImage.Job2D;
 import sune.lib.sil2.IImage.Job1D;
+import sune.lib.sil2.IImage.Job2D;
 import sune.lib.sil2.format.ImagePixelFormat;
 
 public interface IImageContext<T extends Buffer> {
