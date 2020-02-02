@@ -25,72 +25,66 @@ public final class FastBlur {
 		final CounterLock lock   = new CounterLock(4);
 		final int         length = input.capacity();
 		final float[]     boxes  = generateBoxes(r, 3);
-		byte[] outputR = new byte[length];
-		byte[] outputG = new byte[length];
-		byte[] outputB = new byte[length];
-		byte[] outputA = new byte[length];
+		final byte[] dstR = new byte[length];
+		final byte[] dstG = new byte[length];
+		final byte[] dstB = new byte[length];
+		final byte[] dstA = new byte[length];
+		final byte[] srcR = new byte[length];
+		final byte[] srcG = new byte[length];
+		final byte[] srcB = new byte[length];
+		final byte[] srcA = new byte[length];
+		channels.separate(input, srcR, srcG, srcB, srcA, false);
 		Threads.execute(() -> {
-			byte[] inputR = new byte[length];
-			channels.separate(input, inputR, channels.getFormat().getShiftR(), false);
-			gaussianBlur(inputR, outputR, x, y, w, h, r, s, boxes);
+			gaussianBlur(srcR, dstR, x, y, w, h, r, s, boxes);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
-			byte[] inputG = new byte[length];
-			channels.separate(input, inputG, channels.getFormat().getShiftG(), false);
-			gaussianBlur(inputG, outputG, x, y, w, h, r, s, boxes);
+			gaussianBlur(srcG, dstG, x, y, w, h, r, s, boxes);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
-			byte[] inputB = new byte[length];
-			channels.separate(input, inputB, channels.getFormat().getShiftB(), false);
-			gaussianBlur(inputB, outputB, x, y, w, h, r, s, boxes);
+			gaussianBlur(srcB, dstB, x, y, w, h, r, s, boxes);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
-			byte[] inputA = new byte[length];
-			channels.separate(input, inputA, channels.getFormat().getShiftA(), false);
-			gaussianBlur(inputA, outputA, x, y, w, h, r, s, boxes);
+			gaussianBlur(srcA, dstA, x, y, w, h, r, s, boxes);
 			lock.decrement();
 		});
 		lock.await();
-		channels.join(outputR, outputG, outputB, outputA, output, premultiply);
+		channels.join(dstR, dstG, dstB, dstA, output, premultiply);
 	}
 	
 	public static final <T extends Buffer> void boxBlur(T input, T output, int x, int y, int w, int h, int r, int s,
 			InternalChannels<T> channels, boolean premultiply) {
 		final CounterLock lock   = new CounterLock(4);
 		final int         length = input.capacity();
-		byte[] outputR = new byte[length];
-		byte[] outputG = new byte[length];
-		byte[] outputB = new byte[length];
-		byte[] outputA = new byte[length];
+		final byte[] dstR = new byte[length];
+		final byte[] dstG = new byte[length];
+		final byte[] dstB = new byte[length];
+		final byte[] dstA = new byte[length];
+		final byte[] srcR = new byte[length];
+		final byte[] srcG = new byte[length];
+		final byte[] srcB = new byte[length];
+		final byte[] srcA = new byte[length];
+		channels.separate(input, srcR, srcG, srcB, srcA, false);
 		Threads.execute(() -> {
-			byte[] inputR = new byte[length];
-			channels.separate(input, inputR, channels.getFormat().getShiftR(), false);
-			boxBlur(inputR, outputR, x, y, w, h, r, s);
+			boxBlur(srcR, dstR, x, y, w, h, r, s);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
-			byte[] inputG = new byte[length];
-			channels.separate(input, inputG, channels.getFormat().getShiftG(), false);
-			boxBlur(inputG, outputG, x, y, w, h, r, s);
+			boxBlur(srcG, dstG, x, y, w, h, r, s);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
-			byte[] inputB = new byte[length];
-			channels.separate(input, inputB, channels.getFormat().getShiftB(), false);
-			boxBlur(inputB, outputB, x, y, w, h, r, s);
+			boxBlur(srcB, dstB, x, y, w, h, r, s);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
-			byte[] inputA = new byte[length];
-			channels.separate(input, inputA, channels.getFormat().getShiftA(), false);
-			boxBlur(inputA, outputA, x, y, w, h, r, s);
+			boxBlur(srcA, dstA, x, y, w, h, r, s);
 			lock.decrement();
 		});
 		lock.await();
-		channels.join(outputR, outputG, outputB, outputA, output, premultiply);
+		channels.join(dstR, dstG, dstB, dstA, output, premultiply);
 	}
 	
 	private static final float[] generateBoxes(int sigma, int amount) {

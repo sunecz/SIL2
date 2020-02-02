@@ -116,7 +116,7 @@ final class InternalChannels<T extends Buffer> {
 		int epp = format.getElementsPerPixel();
 		for(int i = 0, l = input.capacity() / epp, color; i < l; ++i) {
 			color    = format.getARGB(input, i * epp);
-			red  [i] = (byte) ((color >> shiftB) & 0xff);
+			red  [i] = (byte) ((color >> shiftR) & 0xff);
 			green[i] = (byte) ((color >> shiftG) & 0xff);
 			blue [i] = (byte) ((color >> shiftB) & 0xff);
 			alpha[i] = (byte) ((color >> shiftA) & 0xff);
@@ -135,7 +135,7 @@ final class InternalChannels<T extends Buffer> {
 		int epp = format.getElementsPerPixel();
 		for(int i = 0, l = input.capacity() / epp, color; i < l; ++i) {
 			color    = format.getARGBPre(input, i * epp);
-			red  [i] = (byte) ((color >> shiftB) & 0xff);
+			red  [i] = (byte) ((color >> shiftR) & 0xff);
 			green[i] = (byte) ((color >> shiftG) & 0xff);
 			blue [i] = (byte) ((color >> shiftB) & 0xff);
 			alpha[i] = (byte) ((color >> shiftA) & 0xff);
