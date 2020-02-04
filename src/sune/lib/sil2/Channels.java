@@ -43,6 +43,11 @@ public final class Channels {
 		ic.separate(input, red, green, blue, alpha);
 	}
 	
+	private static final <T extends Buffer> void separate(InternalChannels<T> ic, T input, byte[] red, byte[] green,
+			byte[] blue, byte[] alpha, int x, int y, int width, int height, int stride, boolean premultiply) {
+		ic.separate(input, red, green, blue, alpha, x, y, width, height, stride, premultiply);
+   	}
+	
 	private static final <T extends Buffer> void join(InternalChannels<T> ic, byte[] input, T output) {
 		ic.join(input, output);
 	}
@@ -51,15 +56,20 @@ public final class Channels {
 		ic.join(input, output, alpha);
 	}
 	
-	private static final <T extends Buffer> void join(InternalChannels<T> ic,
- 			byte[] red, byte[] green, byte[] blue, T output, int alpha) {
+	private static final <T extends Buffer> void join(InternalChannels<T> ic, byte[] red, byte[] green, byte[] blue,
+			T output, int alpha) {
  		ic.join(red, green, blue, output, alpha);
  	}
 	
-	public static final <T extends Buffer> void join(InternalChannels<T> ic,
- 			byte[] red, byte[] green, byte[] blue, byte[] alpha, T output) {
+	private static final <T extends Buffer> void join(InternalChannels<T> ic, byte[] red, byte[] green, byte[] blue,
+			byte[] alpha, T output) {
  		ic.join(red, green, blue, alpha, output);
  	}
+	
+	private static final <T extends Buffer> void join(InternalChannels<T> ic, byte[] red, byte[] green, byte[] blue,
+			byte[] alpha, T output, int x, int y, int width, int height, int stride, boolean premultiply) {
+		ic.join(red, green, blue, alpha, output, x, y, width, height, stride, premultiply);
+   	}
 	
 	/**
 	 * Combines masks of the given color channels to a single mask.
@@ -145,6 +155,16 @@ public final class Channels {
 	public static final <T extends Buffer> void separate(T input, byte[] red, byte[] green, byte[] blue, byte[] alpha) {
 		separate(nativeInternalChannels(), input, red, green, blue, alpha);
 	}
+	
+	public static final <T extends Buffer> void separate(ImagePixelFormat<T> pixelFormat, T input, byte[] red, byte[] green,
+ 			byte[] blue, byte[] alpha, int x, int y, int width, int height, int stride, boolean premultiply) {
+ 		separate(internalChannels(pixelFormat), input, red, green, blue, alpha, x, y, width, height, stride, premultiply);
+  	}
+	
+	public static final <T extends Buffer> void separate(T input, byte[] red, byte[] green, byte[] blue, byte[] alpha,
+			int x, int y, int width, int height, int stride, boolean premultiply) {
+		separate(nativeInternalChannels(), input, red, green, blue, alpha, x, y, width, height, stride, premultiply);
+ 	}
 	
 	/**
 	 * Converts values in the given input array into ARGB int colors and store
@@ -257,4 +277,14 @@ public final class Channels {
 	public static final <T extends Buffer> void join(byte[] red, byte[] green, byte[] blue, byte[] alpha, T output) {
 		join(nativeInternalChannels(), red, green, blue, alpha, output);
 	}
+	
+	public static final <T extends Buffer> void join(ImagePixelFormat<T> pixelFormat, byte[] red, byte[] green, byte[] blue,
+			byte[] alpha, T output, int x, int y, int width, int height, int stride, boolean premultiply) {
+		join(internalChannels(pixelFormat), red, green, blue, alpha, output, x, y, width, height, stride, premultiply);
+ 	}
+	
+	public static final <T extends Buffer> void join(byte[] red, byte[] green, byte[] blue, byte[] alpha, T output,
+			int x, int y, int width, int height, int stride, boolean premultiply) {
+ 		join(nativeInternalChannels(), red, green, blue, alpha, output, x, y, width, height, stride, premultiply);
+  	}
 }
