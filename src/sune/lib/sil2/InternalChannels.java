@@ -8,6 +8,8 @@ import sune.lib.sil2.format.ImagePixelFormat;
  * Collection of methods related to work with color channels.*/
 final class InternalChannels<T extends Buffer> {
 	
+	// TODO: Update JavaDoc
+	
 	private final ImagePixelFormat<T> format;
 	
 	private final int shiftB;
@@ -74,8 +76,8 @@ final class InternalChannels<T extends Buffer> {
 	 * @param shift The shift of a channel to be separated*/
 	public final void separate(T input, byte[] output, int shift) {
 		int epp = format.getElementsPerPixel();
-		for(int i = 0, l = input.capacity() / epp; i < l; ++i) {
-			output[i] = (byte) ((format.getARGB(input, i * epp) >> shift) & 0xff);
+		for(int i = 0, k = 0, l = input.capacity(); i < l; i+=epp, ++k) {
+			output[k] = (byte) ((format.getARGB(input, i) >> shift) & 0xff);
 		}
 	}
 	
@@ -87,8 +89,8 @@ final class InternalChannels<T extends Buffer> {
 	 * @param shift The shift of a channel to be separated*/
 	public final void separatePre(T input, byte[] output, int shift) {
 		int epp = format.getElementsPerPixel();
-		for(int i = 0, l = input.capacity() / epp; i < l; ++i) {
-			output[i] = (byte) ((format.getARGBPre(input, i * epp) >> shift) & 0xff);
+		for(int i = 0, k = 0, l = input.capacity(); i < l; i+=epp, ++k) {
+			output[k] = (byte) ((format.getARGBPre(input, i) >> shift) & 0xff);
 		}
 	}
 	
@@ -114,12 +116,12 @@ final class InternalChannels<T extends Buffer> {
 	 * @param alpha The output for alpha channel*/
 	public final void separate(T input, byte[] red, byte[] green, byte[] blue, byte[] alpha) {
 		int epp = format.getElementsPerPixel();
-		for(int i = 0, l = input.capacity() / epp, color; i < l; ++i) {
-			color    = format.getARGB(input, i * epp);
-			red  [i] = (byte) ((color >> shiftR) & 0xff);
-			green[i] = (byte) ((color >> shiftG) & 0xff);
-			blue [i] = (byte) ((color >> shiftB) & 0xff);
-			alpha[i] = (byte) ((color >> shiftA) & 0xff);
+		for(int i = 0, k = 0, l = input.capacity(), color; i < l; i+=epp, ++k) {
+			color    = format.getARGB(input, i);
+			red  [k] = (byte) ((color >> shiftR) & 0xff);
+			green[k] = (byte) ((color >> shiftG) & 0xff);
+			blue [k] = (byte) ((color >> shiftB) & 0xff);
+			alpha[k] = (byte) ((color >> shiftA) & 0xff);
 		}
 	}
 	
@@ -133,12 +135,12 @@ final class InternalChannels<T extends Buffer> {
 	 * @param alpha The output for alpha channel*/
 	public final void separatePre(T input, byte[] red, byte[] green, byte[] blue, byte[] alpha) {
 		int epp = format.getElementsPerPixel();
-		for(int i = 0, l = input.capacity() / epp, color; i < l; ++i) {
-			color    = format.getARGBPre(input, i * epp);
-			red  [i] = (byte) ((color >> shiftR) & 0xff);
-			green[i] = (byte) ((color >> shiftG) & 0xff);
-			blue [i] = (byte) ((color >> shiftB) & 0xff);
-			alpha[i] = (byte) ((color >> shiftA) & 0xff);
+		for(int i = 0, k = 0, l = input.capacity(), color; i < l; i+=epp, ++k) {
+			color    = format.getARGBPre(input, i);
+			red  [k] = (byte) ((color >> shiftR) & 0xff);
+			green[k] = (byte) ((color >> shiftG) & 0xff);
+			blue [k] = (byte) ((color >> shiftB) & 0xff);
+			alpha[k] = (byte) ((color >> shiftA) & 0xff);
 		}
 	}
 	
@@ -156,6 +158,50 @@ final class InternalChannels<T extends Buffer> {
 		else              separate   (input, red, green, blue, alpha);
 	}
 	
+	public final void separate(T input, byte[] red, byte[] green, byte[] blue, byte[] alpha,
+			int x, int y, int width, int height, int stride) {
+		int epp = format.getElementsPerPixel(), sk = stride - width, si = sk * epp;
+		for(int r = height, c = width, k = y * stride + x, i = k * epp, color;; i+=epp, ++k) {
+			color    = format.getARGB(input, i);
+			red  [k] = (byte) ((color >> shiftR) & 0xff);
+			green[k] = (byte) ((color >> shiftG) & 0xff);
+			blue [k] = (byte) ((color >> shiftB) & 0xff);
+			alpha[k] = (byte) ((color >> shiftA) & 0xff);
+			if((--c == 0)) {
+				c  = width;
+				k += sk;
+				i += si;
+				if((--r == 0))
+					break;
+			}
+		}
+	}
+	
+	public final void separatePre(T input, byte[] red, byte[] green, byte[] blue, byte[] alpha,
+			int x, int y, int width, int height, int stride) {
+		int epp = format.getElementsPerPixel(), sk = stride - width, si = sk * epp;
+		for(int r = height, c = width, k = y * stride + x, i = k * epp, color;; i+=epp, ++k) {
+			color    = format.getARGBPre(input, i);
+			red  [k] = (byte) ((color >> shiftR) & 0xff);
+			green[k] = (byte) ((color >> shiftG) & 0xff);
+			blue [k] = (byte) ((color >> shiftB) & 0xff);
+			alpha[k] = (byte) ((color >> shiftA) & 0xff);
+			if((--c == 0)) {
+				c  = width;
+				k += sk;
+				i += si;
+				if((--r == 0))
+					break;
+			}
+		}
+	}
+	
+	public final void separate(T input, byte[] red, byte[] green, byte[] blue, byte[] alpha,
+			int x, int y, int width, int height, int stride, boolean premultiply) {
+		if((premultiply)) separatePre(input, red, green, blue, alpha, x, y, width, height, stride);
+		else              separate   (input, red, green, blue, alpha, x, y, width, height, stride);
+	}
+	
 	/**
 	 * Converts values in the given input array into ARGB int colors and store
 	 * them in the given output array. This method converts the input so that
@@ -165,12 +211,12 @@ final class InternalChannels<T extends Buffer> {
 	 * @param output The output*/
 	public final void join(byte[] input, T output) {
 		int epp = format.getElementsPerPixel();
-		for(int i = 0, l = output.capacity() / epp, color; i < l; ++i) {
-			color = input[i] & 0xff;
-			format.setARGB(output, i * epp, (color << shiftA) |
-			                                (color << shiftR) |
-			                                (color << shiftG) |
-			                                (color << shiftB));
+		for(int i = 0, k = 0, l = output.capacity(), color; i < l; i+=epp, ++k) {
+			color = input[k] & 0xff;
+			format.setARGB(output, i, (color << shiftA) |
+			                          (color << shiftR) |
+			                          (color << shiftG) |
+			                          (color << shiftB));
 		}
 	}
 	
@@ -183,12 +229,12 @@ final class InternalChannels<T extends Buffer> {
 	 * @param output The output*/
 	public final void joinPre(byte[] input, T output) {
 		int epp = format.getElementsPerPixel();
-		for(int i = 0, l = output.capacity() / epp, color; i < l; ++i) {
-			color = input[i] & 0xff;
-			format.setARGBPre(output, i * epp, (color << shiftA) |
-			                                   (color << shiftR) |
-			                                   (color << shiftG) |
-			                                   (color << shiftB));
+		for(int i = 0, k = 0, l = output.capacity(), color; i < l; i+=epp, ++k) {
+			color = input[k] & 0xff;
+			format.setARGBPre(output, i, (color << shiftA) |
+			                             (color << shiftR) |
+			                             (color << shiftG) |
+			                             (color << shiftB));
 		}
 	}
 	
@@ -217,12 +263,12 @@ final class InternalChannels<T extends Buffer> {
 	public final void join(byte[] input, T output, int alpha) {
 		int epp = format.getElementsPerPixel();
 		int valueA = (alpha & 0xff) << shiftA;
-		for(int i = 0, l = output.capacity() / epp, color; i < l; ++i) {
-			color = input[i] & 0xff;
-			format.setARGB(output, i * epp, (color << shiftR) |
-			                                (color << shiftG) |
-			                                (color << shiftB) |
-			                                (valueA));
+		for(int i = 0, k = 0, l = output.capacity(), color; i < l; i+=epp, ++k) {
+			color = input[k] & 0xff;
+			format.setARGB(output, i, (color << shiftR) |
+			                          (color << shiftG) |
+			                          (color << shiftB) |
+			                          (valueA));
 		}
 	}
 	
@@ -238,12 +284,12 @@ final class InternalChannels<T extends Buffer> {
 	public final void joinPre(byte[] input, T output, int alpha) {
 		int epp = format.getElementsPerPixel();
 		int valueA = (alpha & 0xff) << shiftA;
-		for(int i = 0, l = output.capacity() / epp, color; i < l; ++i) {
-			color = input[i] & 0xff;
-			format.setARGBPre(output, i * epp, (color << shiftR) |
-			                                   (color << shiftG) |
-			                                   (color << shiftB) |
-			                                   (valueA));
+		for(int i = 0, k = 0, l = output.capacity(), color; i < l; i+=epp, ++k) {
+			color = input[k] & 0xff;
+			format.setARGBPre(output, i, (color << shiftR) |
+			                             (color << shiftG) |
+			                             (color << shiftB) |
+			                             (valueA));
 		}
 	}
 	
@@ -276,11 +322,11 @@ final class InternalChannels<T extends Buffer> {
 	public final void join(byte[] red, byte[] green, byte[] blue, T output, int alpha) {
 		int epp = format.getElementsPerPixel();
 		int valueA = (alpha & 0xff) << shiftA;
-		for(int i = 0, l = output.capacity(); i < l; ++i) {
-			format.setARGB(output, i * epp, ((red  [i] & 0xff) << shiftR) |
-			                                ((green[i] & 0xff) << shiftG) |
-			                                ((blue [i] & 0xff) << shiftB) |
-			                                ((valueA)));
+		for(int i = 0, k = 0, l = output.capacity(); i < l; i+=epp, ++k) {
+			format.setARGB(output, i, ((red  [k] & 0xff) << shiftR) |
+			                          ((green[k] & 0xff) << shiftG) |
+			                          ((blue [k] & 0xff) << shiftB) |
+			                          ((valueA)));
 		}
 	}
 	
@@ -298,11 +344,11 @@ final class InternalChannels<T extends Buffer> {
 	public final void joinPre(byte[] red, byte[] green, byte[] blue, T output, int alpha) {
 		int epp = format.getElementsPerPixel();
 		int valueA = (alpha & 0xff) << shiftA;
-		for(int i = 0, l = output.capacity(); i < l; ++i) {
-			format.setARGBPre(output, i * epp, ((red  [i] & 0xff) << shiftR) |
-			                                   ((green[i] & 0xff) << shiftG) |
-			                                   ((blue [i] & 0xff) << shiftB) |
-			                                   ((valueA)));
+		for(int i = 0, k = 0, l = output.capacity(); i < l; i+=epp, ++k) {
+			format.setARGBPre(output, i, ((red  [k] & 0xff) << shiftR) |
+			                             ((green[k] & 0xff) << shiftG) |
+			                             ((blue [k] & 0xff) << shiftB) |
+			                             ((valueA)));
 		}
 	}
 	
@@ -335,11 +381,11 @@ final class InternalChannels<T extends Buffer> {
 	 * @param output The output*/
 	public final void join(byte[] red, byte[] green, byte[] blue, byte[] alpha, T output) {
 		int epp = format.getElementsPerPixel();
-		for(int i = 0, l = output.capacity() / epp; i < l; ++i) {
-			format.setARGB(output, i * epp, ((alpha[i] & 0xff) << shiftA) |
-			                                ((red  [i] & 0xff) << shiftR) |
-			                                ((green[i] & 0xff) << shiftG) |
-			                                ((blue [i] & 0xff) << shiftB));
+		for(int i = 0, k = 0, l = output.capacity(); i < l; i+=epp, ++k) {
+			format.setARGB(output, i, ((alpha[k] & 0xff) << shiftA) |
+			                          ((red  [k] & 0xff) << shiftR) |
+			                          ((green[k] & 0xff) << shiftG) |
+			                          ((blue [k] & 0xff) << shiftB));
 		}
 	}
 	
@@ -355,11 +401,11 @@ final class InternalChannels<T extends Buffer> {
 	 * @param output The output*/
 	public final void joinPre(byte[] red, byte[] green, byte[] blue, byte[] alpha, T output) {
 		int epp = format.getElementsPerPixel();
-		for(int i = 0, l = output.capacity() / epp; i < l; ++i) {
-			format.setARGBPre(output, i * epp, ((alpha[i] & 0xff) << shiftA) |
-			                                   ((red  [i] & 0xff) << shiftR) |
-			                                   ((green[i] & 0xff) << shiftG) |
-			                                   ((blue [i] & 0xff) << shiftB));
+		for(int i = 0, k = 0, l = output.capacity(); i < l; i+=epp, ++k) {
+			format.setARGBPre(output, i, ((alpha[k] & 0xff) << shiftA) |
+			                             ((red  [k] & 0xff) << shiftR) |
+			                             ((green[k] & 0xff) << shiftG) |
+			                             ((blue [k] & 0xff) << shiftB));
 		}
 	}
 	
@@ -379,7 +425,49 @@ final class InternalChannels<T extends Buffer> {
 		else              join   (red, green, blue, alpha, output);
 	}
 	
-	public final ImagePixelFormat<?> getFormat() {
+	public final void join(byte[] red, byte[] green, byte[] blue, byte[] alpha, T output,
+			int x, int y, int width, int height, int stride) {
+		int epp = format.getElementsPerPixel(), sk = stride - width, si = sk * epp;
+  		for(int r = height, c = width, k = y * stride + x, i = k * epp;; i+=epp, ++k) {
+  			format.setARGB(output, i, ((alpha[k] & 0xff) << shiftA) |
+  			                          ((red  [k] & 0xff) << shiftR) |
+  			                          ((green[k] & 0xff) << shiftG) |
+  			                          ((blue [k] & 0xff) << shiftB));
+  			if((--c == 0)) {
+  				c  = width;
+  				k += sk;
+  				i += si;
+  				if((--r == 0))
+  					break;
+  			}
+  		}
+	}
+	
+	public final void joinPre(byte[] red, byte[] green, byte[] blue, byte[] alpha, T output,
+			int x, int y, int width, int height, int stride) {
+		int epp = format.getElementsPerPixel(), sk = stride - width, si = sk * epp;
+  		for(int r = height, c = width, k = y * stride + x, i = k * epp;; i+=epp, ++k) {
+  			format.setARGBPre(output, i, ((alpha[k] & 0xff) << shiftA) |
+  			                             ((red  [k] & 0xff) << shiftR) |
+  			                             ((green[k] & 0xff) << shiftG) |
+  			                             ((blue [k] & 0xff) << shiftB));
+  			if((--c == 0)) {
+  				c  = width;
+  				k += sk;
+  				i += si;
+  				if((--r == 0))
+  					break;
+  			}
+  		}
+	}
+	
+	public final void join(byte[] red, byte[] green, byte[] blue, byte[] alpha, T output,
+			int x, int y, int width, int height, int stride, boolean premultiply) {
+		if((premultiply)) joinPre(red, green, blue, alpha, output, x, y, width, height, stride);
+		else              join   (red, green, blue, alpha, output, x, y, width, height, stride);
+	}
+	
+	public final ImagePixelFormat<T> getFormat() {
 		return format;
 	}
 }
