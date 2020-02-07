@@ -68,19 +68,19 @@ public final class FastBlur {
 		final byte[] srcA = new byte[length];
 		channels.separate(input, srcR, srcG, srcB, srcA, x, y, w, h, s, false);
 		Threads.execute(() -> {
-			gaussianBlur(srcR, dstR, x, y, w, h, r, s, boxes);
+			gaussianBlur(srcR, dstR, x, y, w, h, boxes, s);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
-			gaussianBlur(srcG, dstG, x, y, w, h, r, s, boxes);
+			gaussianBlur(srcG, dstG, x, y, w, h, boxes, s);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
-			gaussianBlur(srcB, dstB, x, y, w, h, r, s, boxes);
+			gaussianBlur(srcB, dstB, x, y, w, h, boxes, s);
 			lock.decrement();
 		});
 		Threads.execute(() -> {
-			gaussianBlur(srcA, dstA, x, y, w, h, r, s, boxes);
+			gaussianBlur(srcA, dstA, x, y, w, h, boxes, s);
 			lock.decrement();
 		});
 		lock.await();
@@ -100,10 +100,10 @@ public final class FastBlur {
 	}
 	
 	private static final void gaussianBlur(byte[] input, byte[] output, int x, int y, int w, int h,
-			int r, int s, float[] bxs) {
-		boxBlur(input, output, x, y, w, h, (int) ((bxs[0] - 1.0f) * 0.5f), s);
-		boxBlur(output, input, x, y, w, h, (int) ((bxs[1] - 1.0f) * 0.5f), s);
-		boxBlur(input, output, x, y, w, h, (int) ((bxs[2] - 1.0f) * 0.5f), s);
+			float[] boxes, int s) {
+		boxBlur(input, output, x, y, w, h, (int) ((boxes[0] - 1.0f) * 0.5f), s);
+		boxBlur(output, input, x, y, w, h, (int) ((boxes[1] - 1.0f) * 0.5f), s);
+		boxBlur(input, output, x, y, w, h, (int) ((boxes[2] - 1.0f) * 0.5f), s);
 	}
 	
 	private static final void boxBlur(byte[] input, byte[] output, int x, int y, int w, int h, int r, int s) {

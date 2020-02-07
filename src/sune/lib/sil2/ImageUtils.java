@@ -326,6 +326,8 @@ public final class ImageUtils {
 	
 	// ----- IMAGE ROTATE
 	
+	// TODO: Better rotation algorithm: https://www.gamedev.net/reference/articles/article811.asp
+	
 	/**
 	 * Quickly rotates the given pixels array with the given width and height
 	 * by the given angle and outputs it to a new image. Nearest-neighbor-like
@@ -406,7 +408,7 @@ public final class ImageUtils {
 	 * @param pixels The pixels array
 	 * @param color The color
 	 * @param format The pixel format*/
-	public static final void fill(Buffer pixels, int color, ImagePixelFormat<?> format) {
+	public static final <T extends Buffer> void fill(T pixels, int color, ImagePixelFormat<T> format) {
 		BufferUtils.fill(pixels, color, format.getElementsPerPixel());
 	}
 	
@@ -414,10 +416,12 @@ public final class ImageUtils {
 	 * Fills the given image with the given color.
 	 * @param image The image
 	 * @param color The color*/
-	public static final void fill(WritableImage image, int color) {
+	public static final <T extends Buffer> void fill(WritableImage image, int color) {
 		if((image == null)) throw new NullPointerException("Invalid image");
-		ImagePixelFormat<?> format = ImagePixelFormats.from(image);
-		Buffer pixels = getPixels(image);
+		@SuppressWarnings("unchecked")
+		ImagePixelFormat<T> format = (ImagePixelFormat<T>) ImagePixelFormats.from(image);
+		@SuppressWarnings("unchecked")
+		T pixels = (T) getPixels(image);
 		fill(pixels, color, format);
 	}
 	
@@ -655,9 +659,7 @@ public final class ImageUtils {
 			throw new IllegalArgumentException("Invalid position");
 		if((width <= 0 || width > imgw || height <= 0 || height > imgh))
 			throw new IllegalArgumentException("Invalid size");
-		return image != null
-					? new WritableImage(image.getPixelReader(), x, y, width, height)
-					: null;
+		return new WritableImage(image.getPixelReader(), x, y, width, height);
 	}
 	
 	/**
@@ -894,7 +896,6 @@ public final class ImageUtils {
 	
 	// ----- IMAGE COMBINE
 	
-	// Both background and foreground have to have the same width and height
 	/**
 	 * Combines the given background and the given foreground and outputs it to
 	 * the given result. Combining is done using the {@linkplain Colors#blend(int, int)}
@@ -903,6 +904,7 @@ public final class ImageUtils {
 	 * @param foreground The foreground
 	 * @param result The result
 	 * @param format The pixel format*/
+	// Both background and foreground have to have the same width and height
 	public static final <T extends Buffer> void combine(T background, T foreground, T result,
 			ImagePixelFormat<T> format) {
 		if((background == null)) throw new NullPointerException("Invalid background array");

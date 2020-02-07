@@ -12,7 +12,6 @@ import java.util.function.Function;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
-import javafx.scene.paint.Color;
 import sune.lib.sil2.FXInternalUtils.PlatformImageWrapper;
 import sune.lib.sil2.format.ImagePixelFormat;
 import sune.lib.sil2.format.ImagePixelFormats;
@@ -24,9 +23,12 @@ import sune.lib.sil2.format.ImagePixelFormats;
 public final class IImage<T extends Buffer> implements IImageContext<T> {
 	
 	// TODO: Clean Up
+	// TODO: Update JavaDoc
+	// TODO: Make possible to set a custom BufferStrategy
 	
 	private static final float F2I = 255.0f;
 	private static final float I2F = 1.0f / 255.0f;
+	private static final int MAX_TILE_SIZE = 256;
 	
 	private final IImage<T> parent;
 	private WritableImage image;
@@ -147,6 +149,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		this.parent = null;
 	}
 	
+	// Constructor for creating sub-images
 	private IImage(IImage<T> iimg, int x, int y, int width, int height) {
 		this.image 	  = iimg.image;
 		this.width 	  = iimg.width;
@@ -273,8 +276,8 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 			int ey = offY + subHeight;
 			int x = offX;
 			int y = offY;
-			int w = Math.max(subWidth  / 4, 256);
-			int h = Math.max(subHeight / 4, 256);
+			int w = Math.max(subWidth  / 4, MAX_TILE_SIZE);
+			int h = Math.max(subHeight / 4, MAX_TILE_SIZE);
 			for(int i = 0; i < iterations; ++i) {
 				for(int kx = x, ky = y;;) {
 					int sx = kx;
@@ -482,8 +485,8 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 			int ey = offY + subHeight;
 			int x = offX;
 			int y = offY;
-			int w = Math.max(subWidth  / 4, 256);
-			int h = Math.max(subHeight / 4, 256);
+			int w = Math.max(subWidth  / 4, MAX_TILE_SIZE);
+			int h = Math.max(subHeight / 4, MAX_TILE_SIZE);
 			for(int kx = x, ky = y;;) {
 				int sx = kx;
 				int sy = ky;
@@ -734,8 +737,8 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		final CounterLock lock = new CounterLock();
 		int ex = Math.min(IImage.this.width, Math.min(x + width, offX + subWidth));
 		int ey = Math.min(IImage.this.height, Math.min(y + height, offY + subHeight));
-		int w = Math.max(width  / 4, 256);
-		int h = Math.max(height / 4, 256);
+		int w = Math.max(width  / 4, MAX_TILE_SIZE);
+		int h = Math.max(height / 4, MAX_TILE_SIZE);
 		for(int kx = x, ky = y;;) {
 			int sx = kx;
 			int sy = ky;
@@ -867,8 +870,8 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		int ey = offY + subHeight;
 		int x = offX;
 		int y = offY;
-		int w = Math.max(subWidth  / 4, 256);
-		int h = Math.max(subHeight / 4, 256);
+		int w = Math.max(subWidth  / 4, MAX_TILE_SIZE);
+		int h = Math.max(subHeight / 4, MAX_TILE_SIZE);
 		for(int kx = x, ky = y;;) {
 			int sx = kx;
 			int sy = ky;
@@ -1101,66 +1104,8 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	 * Sets a pixel at the given position to the given color.
 	 * @param x The x-coordinate of the position
 	 * @param y The y-coordinate of the position
-	 * @param color The color*/
-	public final void setPixel(int x, int y, Color color) {
-		setPixel(x, y, Colors.color2int(color));
-	}
-	
-	/**
-	 * Sets a pixel at the given position to a color, given by
-	 * the given red, green and blue component.
-	 * @param x The x-coordinate of the position
-	 * @param y The y-coordinate of the position
-	 * @param r The red component of the color
-	 * @param g The green component of the color
-	 * @param b The blue component of the color*/
-	public final void setPixel(int x, int y, int r, int g, int b) {
-		setPixel(x, y, r, g, b, 0xff);
-	}
-	
-	/**
-	 * Sets a pixel at the given position to a color, given by
-	 * the given red, green, blue and alpha component.
-	 * @param x The x-coordinate of the position
-	 * @param y The y-coordinate of the position
-	 * @param r The red component of the color
-	 * @param g The green component of the color
-	 * @param b The blue component of the color
-	 * @param a The alpha component of the color*/
-	public final void setPixel(int x, int y, int r, int g, int b, int a) {
-		setPixel(x, y, Colors.rgba(r, g, b, a));
-	}
-	
-	/**
-	 * Sets a pixel at the given position to a color, given by
-	 * the given hue, saturation and lightness.
-	 * @param x The x-coordinate of the position
-	 * @param y The y-coordinate of the position
-	 * @param h The hue of the color
-	 * @param s The saturation of the color
-	 * @param l The lightness of the color*/
-	public final void setPixel(int x, int y, float h, float s, float l) {
-		setPixel(x, y, h, s, l, 1.0f);
-	}
-	
-	/**
-	 * Sets a pixel at the given position to a color, given by
-	 * the given hue, saturation, lightness and alpha.
-	 * @param x The x-coordinate of the position
-	 * @param y The y-coordinate of the position
-	 * @param h The hue of the color
-	 * @param s The saturation of the color
-	 * @param l The lightness of the color
-	 * @param a The alpha of the color*/
-	public final void setPixel(int x, int y, float h, float s, float l, float a) {
-		setPixel(x, y, Colors.hsla(h, s, l, a));
-	}
-	
-	/**
-	 * Sets a pixel at the given position to the given color.
-	 * @param x The x-coordinate of the position
-	 * @param y The y-coordinate of the position
 	 * @param argb The color, as an ARGB int*/
+	@Override
 	public final void setPixel(int x, int y, int argb) {
 		setPixel((y + offY) * width + (x + offX), argb);
 	}
@@ -1170,6 +1115,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	 * Note that this method does <em>NOT</em> check for index bounds.
 	 * @param index The index
 	 * @param argb The color, as an ARGB int*/
+	@Override
 	public final void setPixel(int index, int argb) {
 		format.setARGB(pixels, index * format.getElementsPerPixel(), argb);
 	}
@@ -1177,10 +1123,11 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	/**
 	 * Sets pixels of {@code this} image to the given pixels.
 	 * @param pixels The pixels*/
+	@Override
 	public final void setPixels(T pixels) {
-		if((pixels.capacity() != this.pixels.capacity()))
+		if((pixels.capacity() != subWidth * subHeight))
 			throw new IllegalArgumentException("Invalid array size");
-		System.arraycopy(pixels.array(), 0, this.pixels.array(), 0, pixels.capacity());
+		Pixels.copy(pixels, offX, offY, width, this.pixels, offX, offY, width, subWidth, subHeight, format.getElementsPerPixel());
 	}
 	
 	/**
@@ -1188,6 +1135,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	 * @param x The x-coordinate of the position
 	 * @param y The y-coordinate of the position
 	 * @return The pixel color, as an ARGB int*/
+	@Override
 	public final int getPixel(int x, int y) {
 		return getPixel((y + offY) * width + (x + offX));
 	}
@@ -1197,26 +1145,9 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	 * Note that this method does <em>NOT</em> check for index bounds.
 	 * @param index The index
 	 * @return The pixel color, as an ARGB int*/
+	@Override
 	public final int getPixel(int index) {
 		return format.getARGB(pixels, index * format.getElementsPerPixel());
-	}
-	
-	/**
-	 * Gets a pixel color at the given position.
-	 * @param x The x-coordinate of the position
-	 * @param y The y-coordinate of the position
-	 * @return The pixel color*/
-	public final Color getPixelColor(int x, int y) {
-		return Colors.int2color(getPixel(x, y));
-	}
-	
-	/**
-	 * Gets a pixel color at the given index.
-	 * Note that this method does <em>NOT</em> check for index bounds.
-	 * @param index The index
-	 * @return The pixel color*/
-	public final Color getPixelColor(int index) {
-		return Colors.int2color(getPixel(index));
 	}
 	
 	/**
