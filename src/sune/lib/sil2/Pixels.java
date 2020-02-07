@@ -7,6 +7,8 @@ import java.nio.Buffer;
  */
 public final class Pixels {
 	
+	// TODO: Update JavaDoc
+	
 	// Forbid anyone to create an instance of this class
 	private Pixels() {
 	}

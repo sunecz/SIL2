@@ -13,6 +13,31 @@ public final class FPSUtils {
 		return toolkit == null ? (toolkit = getToolkit()) : toolkit;
 	}
 	
+	private static Object performanceTracker;
+	private static final Object ensurePerformanceTracker() throws Exception {
+		return performanceTracker == null
+					? performanceTracker = getPerformanceTracker(ensureToolkit())
+					: performanceTracker;
+	}
+	
+	private static final Method method_getInstantFPS;
+	private static final Method method_calcFPS;
+	static {
+		Method _method_getInstantFPS = null;
+		Method _method_calcFPS = null;
+		try {
+			Class<?> clazz = Class.forName("com.sun.javafx.perf.PerformanceTracker");
+			_method_getInstantFPS = clazz.getMethod("getInstantFPS");
+			_method_calcFPS = clazz.getDeclaredMethod("calcFPS");
+			Reflection.setAccessible(_method_getInstantFPS, true);
+			Reflection.setAccessible(_method_calcFPS, true);
+		} catch(Exception ex) {
+			throw new IllegalStateException("Unable to initialize FPS Utils", ex);
+		}
+		method_getInstantFPS = _method_getInstantFPS;
+		method_calcFPS = _method_calcFPS;
+	}
+	
 	// Forbid anyone to create an instance of this class
 	private FPSUtils() {
 	}
@@ -29,23 +54,15 @@ public final class FPSUtils {
 		Method method = clazz.getMethod("getPerformanceTracker");
 		Reflection.setAccessible(method, true);
 		return method.invoke(toolkit);
-		
 	}
 	
-	private static final void performanceTrackerPulse(Object performanceTracker) throws Exception {
-		Class<?> clazz = Class.forName("com.sun.javafx.perf.PerformanceTracker");
-		Method method = clazz.getDeclaredMethod("calcFPS");
-		Reflection.setAccessible(method, true);
-		method.invoke(performanceTracker);
+	private static final void performanceTrackerPulse() throws Exception {
+		method_calcFPS.invoke(ensurePerformanceTracker());
 	}
 	
-	private static final float getInstantFPS(Object toolkit) throws Exception {
-		Object performanceTracker = getPerformanceTracker(toolkit);
-		Class<?> clazz = Class.forName("com.sun.javafx.perf.PerformanceTracker");
-		performanceTrackerPulse(performanceTracker);
-		Method method = clazz.getMethod("getInstantFPS");
-		Reflection.setAccessible(method, true);
-		return (float) method.invoke(performanceTracker);
+	private static final float getInstantFPS() throws Exception {
+		performanceTrackerPulse();
+		return (float) method_getInstantFPS.invoke(ensurePerformanceTracker());
 	}
 	
 	/**
@@ -54,7 +71,7 @@ public final class FPSUtils {
 	 * @return The FPS*/
 	public static final float getFPS() {
 		try {
-			return getInstantFPS(ensureToolkit());
+			return getInstantFPS();
 		} catch(Exception ex) {
 			// Ignore
 		}

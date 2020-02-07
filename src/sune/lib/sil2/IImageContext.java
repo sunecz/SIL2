@@ -34,6 +34,12 @@ public interface IImageContext<T extends Buffer> {
 	void opNot();
 	int[] opIntegral(Function<Integer, Integer> function);
 	
+	void setPixel(int x, int y, int argb);
+	void setPixel(int index, int argb);
+	void setPixels(T pixels);
+	int getPixel(int x, int y);
+	int getPixel(int index);
+	
 	ImagePixelFormat<T> getPixelFormat();
 	InternalChannels<T> getChannels();
 	T getPixels();
