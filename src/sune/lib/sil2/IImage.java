@@ -25,6 +25,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	// TODO: Clean Up
 	// TODO: Update JavaDoc
 	// TODO: Make possible to set a custom BufferStrategy
+	// TODO: apply(): notify children/parent
 	
 	private static final float F2I = 255.0f;
 	private static final float I2F = 1.0f / 255.0f;

@@ -326,70 +326,59 @@ public final class ImageUtils {
 	
 	// ----- IMAGE ROTATE
 	
-	// TODO: Better rotation algorithm: https://www.gamedev.net/reference/articles/article811.asp
-	
 	/**
 	 * Quickly rotates the given pixels array with the given width and height
 	 * by the given angle and outputs it to a new image. Nearest-neighbor-like
 	 * interpolation is used.
 	 * @param pixels The pixels
-	 * @param width The image width
-	 * @param height The image height
-	 * @param angle The angle of rotation
+	 * @param srcw The image width
+	 * @param srch The image height
+	 * @param rad The angle of rotation, in radians
+	 * @param cx The x-coordinate of the center of rotation
+	 * @param cy The y-coordinate of the center of rotation
 	 * @param format The pixel format
 	 * @return The wrapper object of the rotated image*/
-	public static final <T extends Buffer> ImageData fastrotate(T pixels, int width, int height, float angle,
-			ImagePixelFormat<T> format) {
+	// https://www.drdobbs.com/architecture-and-design/fast-bitmap-rotation-and-scaling/184416337
+	public static final <T extends Buffer> ImageData fastrotate(T pixels, int srcw, int srch, float rad,
+			int cx, int cy, ImagePixelFormat<T> format) {
 		if((pixels == null)) throw new NullPointerException("Invalid pixels array");
-		if((width <= 0 || height <= 0 || pixels.capacity() % (width * height) != 0))
+		if((srcw <= 0 || srch <= 0 || pixels.capacity() % (srcw * srch) != 0))
 			throw new IllegalArgumentException("Invalid size");
-		double rad   = Math.toRadians(angle);
-		double cos   = Math.cos(rad);
-		double sin   = Math.sin(rad);
-		double acos  = Math.abs(cos);
-		double asin  = Math.abs(sin);
-		int nwidth   = (int) (width  * acos + height * asin);
-		int nheight  = (int) (height * acos + width  * asin);
-		int cx       = width   / 2;
-		int cy       = height  / 2;
-		int ncx      = nwidth  / 2;
-		int ncy      = nheight / 2;
-		int length   = nwidth * nheight;
-		T buffer = format.newBuffer(length);
-		double dcx   = -width*cos - sin;
-		double dsx   = -width*sin + cos;
-		double nx    = cos*-cx - sin*-cy + ncx;
-		double ny    = sin*-cx + cos*-cy + ncy;
+		float cos = (float) Math.cos(rad), acos = Math.abs(cos);
+		float sin = (float) Math.sin(rad), asin = Math.abs(sin);
+		int dstw = (int) (srcw * acos + srch * asin);
+		int dsth = (int) (srch * acos + srcw * asin);
+		int ncx = dstw >> 1, ncy = dsth >> 1;
 		int epp = format.getElementsPerPixel();
-		for(int i = 0, x = 0, ni = 0, inx = 0, iny = 0,
-				c = 0, r = 0, l = pixels.capacity(); i < l; i += epp) {
-			int color = format.getARGB(pixels, i);
-			inx       = (int) nx;
-			iny       = (int) ny;
-			ni        = iny * nwidth + inx;
-			c         = ni+1;
-			r         = ni+nwidth;
-			if((ni    < length))                format.setARGB(buffer, ni * epp, color);
-			if((inx+1 < nwidth  && c < length)) format.setARGB(buffer, c  * epp, color);
-			if((iny+1 < nheight && r < length)) format.setARGB(buffer, r  * epp, color);
-			nx+=cos;
-			ny+=sin;
-			if((++x == width)) {
-				nx+=dcx;
-				ny+=dsx;
-				x  = 0;
+		T dst = BufferUtils.newBufferOfType(pixels, dstw * dsth * epp);
+		float su = cx - (ncx * cos + ncy * sin), ru = su, u;
+		float sv = cy - (ncy * cos - ncx * sin), rv = sv, v;
+		for(int y = 0, i = 0, k, stride = srcw * epp; y < dsth; ++y) {
+			u = ru;
+			v = rv;
+			for(int x = 0; x < dstw; ++x, i += epp) {
+				if((u >= 0.0f && v >= 0.0f && u < srcw && v < srch)) {
+					k = (int) v * stride + (int) u * epp;
+					format.setARGB(dst, i, pixels, k);
+				}
+				u += cos;
+				v -= sin;
 			}
+			ru += sin;
+			rv += cos;
 		}
-		return new ImageData(nwidth, nheight, buffer);
+		return new ImageData(dstw, dsth, dst);
 	}
 	
 	/**
 	 * Quickly rotates the given image by the given angle and outputs it to a new image.
 	 * Nearest-neighbor-like interpolation is used.
 	 * @param image The image
-	 * @param angle The angle of rotation, in degrees
+	 * @param rad The angle of rotation, in radians
+	 * @param cx The x-coordinate of the center of rotation
+	 * @param cy The y-coordinate of the center of rotation
 	 * @return The rotated image*/
-	public static final <T extends Buffer> WritableImage fastrotate(Image image, float angle) {
+	public static final <T extends Buffer> WritableImage fastrotate(Image image, float rad, int cx, int cy) {
 		if((image == null)) throw new NullPointerException("Invalid image");
 		int   width  = (int) image.getWidth();
 		int   height = (int) image.getHeight();
@@ -397,8 +386,18 @@ public final class ImageUtils {
 		ImagePixelFormat<T> format = (ImagePixelFormat<T>) ImagePixelFormats.from(image);
 		@SuppressWarnings("unchecked")
 		T pixels = (T) getPixels(image);
-		ImageData data = fastrotate(pixels, width, height, angle, format);
+		ImageData data = fastrotate(pixels, width, height, rad, width >> 1, height >> 1, format);
 		return create(data.width, data.height, data.pixels);
+	}
+	
+	/**
+	 * Quickly rotates the given image by the given angle and outputs it to a new image.
+	 * Nearest-neighbor-like interpolation is used.
+	 * @param image The image
+	 * @param rad The angle of rotation, in radians
+	 * @return The rotated image*/
+	public static final <T extends Buffer> WritableImage fastrotate(Image image, float rad) {
+		return fastrotate(image, rad, (int) image.getWidth() >> 1, (int) image.getHeight() >> 1);
 	}
 	
 	// ----- IMAGE FILL
