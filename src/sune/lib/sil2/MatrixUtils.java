@@ -6,8 +6,8 @@ import java.util.Locale;
 public final class MatrixUtils {
 	
 	@FunctionalInterface
-	static interface TriConsumer<A, B, C> {
-		void accept(A a, B b, C c);
+	static interface QuadriConsumer<A, B, C, D> {
+		void accept(A a, B b, C c, D d);
 	}
 	
 	static final int min(int x, int y) {
@@ -22,7 +22,19 @@ public final class MatrixUtils {
 	private MatrixUtils() {
 	}
 	
+	/**
+	 * Utility class for rotating matricies.
+	 * @author Sune
+	 */
 	public static final class MatrixRotator {
+		
+		private static final float PI = (float) StrictMath.PI;
+		private static final float ANGLE_360 = 2.0f * PI;
+		
+		private static final QuadriConsumer<Integer, float[], Integer, float[]>
+			CALLBACK_UNFOLD = ((mi, ring, ri, matrix) -> ring[ri] = matrix[mi]);
+		private static final QuadriConsumer<Integer, float[], Integer, float[]>
+			CALLBACK_FOLD   = ((mi, ring, ri, matrix) -> matrix[mi] = ring[ri]);
 		
 		private final float[] matrix;
 		private final float[][] rings;
@@ -100,7 +112,7 @@ public final class MatrixUtils {
 			return (((i >>> 31) & 1) * l + i) % l;
 		}
 		
-		private final void ringMatrixLoop(TriConsumer<Integer, float[], Integer> callback) {
+		private final void ringMatrixLoop(QuadriConsumer<Integer, float[], Integer, float[]> callback) {
 			int side = matrixSide(matrix.length);
 			// Prepare auxiliary array for computing inner ring index
 			int[] idxs = new int[((side >> 1) + 1) << 1];
@@ -118,7 +130,7 @@ public final class MatrixUtils {
 				// Top    row and right column -> +1
 				// Bottom row and left  column -> -1
 				int rdec = ((((x - y) >>> 31) & 1) << 1) - 1;
-				callback.accept(i, rings[ring], idxs[ridx]);
+				callback.accept(i, rings[ring], idxs[ridx], matrix);
 				idxs[ridx] -= rdec;
 				if((++x == side)) {
 					x = 0;
@@ -131,7 +143,7 @@ public final class MatrixUtils {
 		private final void rotate(float[] ring, float rad) {
 			int len = ring.length;
 			System.arraycopy(ring, 0, temp, 0, len);
-			float stp = (FastMath.ANGLE_360 / len);
+			float stp = (ANGLE_360 / len);
 			float rat = (Math.abs(rad) % stp) / stp;
 			int inc = rad < 0.0f ? 1 : -1;
 			int shf = (int) (rad / stp);
@@ -140,11 +152,11 @@ public final class MatrixUtils {
 		}
 		
 		public final void unfold() {
-			ringMatrixLoop((mi, ring, ri) -> ring[ri] = matrix[mi]);
+			ringMatrixLoop(CALLBACK_UNFOLD);
 		}
 		
 		public final void fold() {
-			ringMatrixLoop((mi, ring, ri) -> matrix[mi] = ring[ri]);
+			ringMatrixLoop(CALLBACK_FOLD);
 		}
 		
 		public final void rotate(float rad) {
