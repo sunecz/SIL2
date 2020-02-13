@@ -8,6 +8,8 @@ import java.nio.Buffer;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.function.Function;
 
 import javafx.scene.image.Image;
@@ -24,13 +26,14 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	
 	// TODO: Clean Up
 	// TODO: Update JavaDoc
-	// TODO: apply(): notify children/parent
 	
 	private static final float F2I = 255.0f;
 	private static final float I2F = 1.0f / 255.0f;
 	private static final int MAX_TILE_SIZE = 256;
 	
 	private final IImage<T> parent;
+	private final List<IImage<T>> children = new LinkedList<>();
+	
 	private WritableImage image;
 	private PlatformImageWrapper wrapper;
 	private int offX;
@@ -124,6 +127,7 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		this.subWidth = width;
 		this.subHeight = height;
 		this.parent = iimg;
+		this.parent.children.add(this);
 	}
 	
 	public final IImage<T> subImage(int x, int y, int width, int height) {
@@ -946,22 +950,29 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		swapBuffer();
 	}
 	
-	@Override
-	public final void swapBuffer() {
+	private final void swapBuffer(IImage<T> caller) {
 		T parray = pixels;
 		pixels = buffer;
 		buffer = parray;
 		// Swap the buffers also in the buffer strategy
-		bufferStrategy.swap(ptrBuffer, ptrPixels);
+		if((caller == this))
+			bufferStrategy.swap(ptrBuffer, ptrPixels);
 		ptrBuffer = 1 - ptrBuffer;
 		ptrPixels = 1 - ptrPixels;
 		// Must propagate the changes to the parent as well
-		if((parent != null)) {
-			parent.pixels = pixels;
-			parent.buffer = buffer;
-			parent.ptrBuffer = ptrBuffer;
-			parent.ptrPixels = ptrPixels;
+		if((parent != null && parent != caller))
+			parent.swapBuffer(this);
+		// Must propagate the changes to the children as well
+		if(!children.isEmpty()) {
+			for(IImage<T> iimg : children)
+				if((iimg != caller))
+					iimg.swapBuffer(this);
 		}
+	}
+	
+	@Override
+	public final void swapBuffer() {
+		swapBuffer(this);
 	}
 	
 	/**
@@ -1054,6 +1065,9 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		bufferStrategy = null;
 		ptrBuffer = -1;
 		ptrPixels = -1;
+		// Remove from parent
+		if((parent != null))
+			parent.children.remove(this);
 	}
 	
 	/**
