@@ -24,7 +24,6 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	
 	// TODO: Clean Up
 	// TODO: Update JavaDoc
-	// TODO: Make possible to set a custom BufferStrategy
 	// TODO: apply(): notify children/parent
 	
 	private static final float F2I = 255.0f;
@@ -55,55 +54,6 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	private int ptrBuffer = 0;
 	private int ptrPixels = 1;
 	
-	private static interface BufferStrategy<T extends Buffer> {
-		T prepareBuffer(int index);
-		T getBuffer    (int index);
-		int numberOfBuffers();
-		void swap(int i1, int i2);
-	}
-	
-	private static final class NBufferStrategy<T extends Buffer> implements BufferStrategy<T> {
-		
-		private final T        original;
-		private final Buffer[] buffers;
-		
-		public NBufferStrategy(T original, int numOfBuffers) {
-			this.original = original;
-			this.buffers  = new Buffer[numOfBuffers];
-		}
-		
-		@Override
-		public T prepareBuffer(int index) {
-			if((index < 0 || index >= buffers.length))
-				return original;
-			T _buffer = BufferUtils.newBufferOfType(original);
-			buffers[index] = _buffer;
-			BufferUtils.buffercopy(original, _buffer);
-			return _buffer;
-		}
-		
-		@SuppressWarnings("unchecked")
-		@Override
-		public T getBuffer(int index) {
-			return index >= 0 && index < buffers.length ? (T) buffers[index] : original;
-		}
-		
-		@Override
-		public int numberOfBuffers() {
-			return buffers.length;
-		}
-		
-		@Override
-		public void swap(int i1, int i2) {
-			if((i1 < 0 || i1 >= buffers.length ||
-				i2 < 0 || i2 >= buffers.length))
-				return;
-			Buffer _buf = buffers[i1];
-			buffers[i1] = buffers[i2];
-			buffers[i2] = _buf;
-		}
-	}
-	
 	/**
 	 * Creates a new instance from the given image.
 	 * @param image The image*/
@@ -126,10 +76,14 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	}
 	
 	public IImage(Image image, int numOfBuffers) {
+		this(image, new NBufferStrategyFactory<>(numOfBuffers));
+	}
+	
+	public IImage(Image image, BufferStrategyFactory<T> bufferStrategyFactory) {
 		if((image == null))
 			throw new IllegalArgumentException("Image cannot be null");
-		if((numOfBuffers <= 0))
-			throw new IllegalArgumentException("Number of buffers must be > 0");
+		if((bufferStrategyFactory == null))
+			throw new IllegalArgumentException("Buffer strategy factory cannot be null");
 		this.image 	  = ensureWritableSupported(image);
 		this.width 	  = (int) this.image.getWidth();
 		this.height   = (int) this.image.getHeight();
@@ -138,9 +92,10 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 		this.original = getTypedWrapperBuffer(wrapper);
 		this.channels = new InternalChannels<>(format);
 		// Buffering
-		this.bufferStrategy = new NBufferStrategy<>(original, numOfBuffers);
+		this.bufferStrategy = bufferStrategyFactory.create(original);
 		this.buffer = bufferStrategy.prepareBuffer(ptrBuffer);
 		this.pixels = bufferStrategy.prepareBuffer(ptrPixels);
+		int numOfBuffers = bufferStrategy.getBuffersCount();
 		if((numOfBuffers > 2)) {
 			for(int i = 2; i < numOfBuffers; ++i)
 				bufferStrategy.prepareBuffer(i);

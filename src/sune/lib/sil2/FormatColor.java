@@ -6,10 +6,24 @@ import sune.lib.sil2.format.ImagePixelFormat;
 public final class FormatColor {
 	
 	private static final float F2I = 255.0f;
-	private final ImagePixelFormat<?> format;
+	
+	private final int shiftR;
+	private final int shiftG;
+	private final int shiftB;
+	private final int shiftA;
+	
+	public FormatColor(int shiftR, int shiftG, int shiftB, int shiftA) {
+		this.shiftR = shiftR;
+		this.shiftG = shiftG;
+		this.shiftB = shiftB;
+		this.shiftA = shiftA;
+	}
 	
 	public FormatColor(ImagePixelFormat<?> format) {
-		this.format = format;
+		this(format.getShiftR(),
+		     format.getShiftG(),
+		     format.getShiftB(),
+		     format.getShiftA());
 	}
 	
 	private static final void linear2premult(int r, int g, int b, int a, byte[] result) {
@@ -33,10 +47,10 @@ public final class FormatColor {
 	// ----- Non-premultiplied colors
 	
 	private final int rgba2int(int r, int g, int b, int a) {
-		return ((a & 0xff) << format.getShiftA()) |
-			   ((r & 0xff) << format.getShiftR()) |
-			   ((g & 0xff) << format.getShiftG()) |
-			   ((b & 0xff) << format.getShiftB());
+		return ((a & 0xff) << shiftA) |
+			   ((r & 0xff) << shiftR) |
+			   ((g & 0xff) << shiftG) |
+			   ((b & 0xff) << shiftB);
 	}
 	
 	public final int rgb(int r, int g, int b) {
@@ -100,10 +114,10 @@ public final class FormatColor {
 	}
 	
 	public final int toARGB(int color) {
-		int a = (color >> format.getShiftA()) & 0xff;
-		int r = (color >> format.getShiftR()) & 0xff;
-		int g = (color >> format.getShiftG()) & 0xff;
-		int b = (color >> format.getShiftB()) & 0xff;
+		int a = (color >> shiftA) & 0xff;
+		int r = (color >> shiftR) & 0xff;
+		int g = (color >> shiftG) & 0xff;
+		int b = (color >> shiftB) & 0xff;
 		return (a << 24) | (r << 16) | (g << 8) | (b);
 	}
 	
@@ -118,10 +132,10 @@ public final class FormatColor {
 		g = premult[1];
 		b = premult[2];
 		a = premult[3];
-		return ((a & 0xff) << format.getShiftA()) |
-			   ((r & 0xff) << format.getShiftR()) |
-			   ((g & 0xff) << format.getShiftG()) |
-			   ((b & 0xff) << format.getShiftB());
+		return ((a & 0xff) << shiftA) |
+			   ((r & 0xff) << shiftR) |
+			   ((g & 0xff) << shiftG) |
+			   ((b & 0xff) << shiftB);
 	}
 	
 	public final int rgbPre(int r, int g, int b) {
@@ -191,10 +205,10 @@ public final class FormatColor {
 	}
 	
 	public final int toARGBPre(int color) {
-		int a = (color >> format.getShiftA()) & 0xff;
-		int r = (color >> format.getShiftR()) & 0xff;
-		int g = (color >> format.getShiftG()) & 0xff;
-		int b = (color >> format.getShiftB()) & 0xff;
+		int a = (color >> shiftA) & 0xff;
+		int r = (color >> shiftR) & 0xff;
+		int g = (color >> shiftG) & 0xff;
+		int b = (color >> shiftB) & 0xff;
 		byte[] premult = new byte[4];
 		linear2premult(r, g, b, a, premult);
 		r = premult[0];
