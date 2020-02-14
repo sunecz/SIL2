@@ -1,5 +1,7 @@
 # SIL2 (Simple Image Library v2) #
-**SIL2** is an experimental simple image library written in Java. It contains useful methods for doing image processing, color conversions and more. Note that the library uses Java's internal loading and saving of images, for more information see Java's `ImageIO` class. Also the primary class for images is the JavaFX's Image class.
+**SIL2** is an experimental simple image library written in Java. It contains useful methods for doing image processing, color conversions and more. The primary class for images is the JavaFX's `Image` class.
+
+Note that this library uses Java's internal loading and saving of images, hence supporting only those image formats that are supported by Java itself. For more information see Java's `ImageIO` class.
 
 *What happened to the first version?* Well, it was so bad it was rewritten.
 
