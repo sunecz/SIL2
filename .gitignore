@@ -1,1 +1,5 @@
+.externalToolBuilders
+.settings
+.classpath
+.project
 bin

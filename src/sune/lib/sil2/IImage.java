@@ -24,7 +24,6 @@ import sune.lib.sil2.format.ImagePixelFormats;
  * @param <T> The type of an underlying buffer this image uses*/
 public final class IImage<T extends Buffer> implements IImageContext<T> {
 	
-	// TODO: Clean Up
 	// TODO: Update JavaDoc
 	
 	private static final float F2I = 255.0f;
@@ -976,8 +975,9 @@ public final class IImage<T extends Buffer> implements IImageContext<T> {
 	}
 	
 	/**
-	 * Writes all the changes to the underlying JavaFX image.*/
-	public final void apply() {
+	 * Writes all changes to the underlying JavaFX image.
+	 */
+	public final void flush() {
 		try {
 			int epp = format.getElementsPerPixel();
 			int str = width * epp;
