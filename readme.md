@@ -53,3 +53,76 @@ Image nativeImage = NativeImage.ensurePixelFormat(image);
 ```java
 PixelFormat<?> nativePixelFormat = NativeImage.getNativePixelFormat();
 ```
+
+## `IImage` class
+The main image class used for all image processing. It encapsulates all important methods for doing image convolution and image processing actions.
+
+Note: this class uses the internal image's buffer. Therefore, if an IImage that will not affect the original image needs to be created, you can use `ImageUtils.copy(image)` to copy the image before passing it as an argument to the constructor.
+
+### Creating a new IImage
+```java
+// By default the IImage is double buffered
+IImage<?> iimg = new IImage<>(image);
+// Another number of buffers
+IImage<?> iimg = new IImage<>(image, numberOfBuffers);
+// Custom buffer strategy
+IImage<?> iimg = new IImage<>(image, bufferStrategyFactory);
+```
+
+### Applying various operations to the image
+To apply operations (such as contrast, blur, etc.) use the `applyOperation(operation)` method. Pre-defined operations that can be used are defined in `sune.lib.sil2.operation.*`, those are `Adjustments`, `Filters`, `Effects`, `Morphology`, `Transforms`, and `ImageOperations`.
+
+```java
+IImage<?> iimg = ...;
+iimg.applyOperation(new Filters.BoxBlur<>(strengthBlur));
+iimg.applyOperation(new Adjustments.Contrast<>(strengthContrast));
+iimg.applyOperation(new MyCustomIImageOperation<>());
+```
+
+An operation can also return a value:
+```java
+float optimalThreshold = iimg.applyOperation(new ImageOperations.OtsuOptimalThreshold<>());
+```
+
+### Applying actions
+There are currently 4 types of actions:
+| Type | Explanation                                                            |
+|------|------------------------------------------------------------------------|
+| INT  | Works only with indicies                                               |
+| RGB  | Works with indicies and RGBA array (red, green, blue, alpha)           |
+| HSL  | Works with indicies and HSLA array (hue, saturation, lightness, alpha) |
+| HCL  | Works with indicies and HCLA array (hue, chroma, lightness, alpha)     |
+
+```java
+// INT
+iimg.applyActionINT((input, output, index, varStore) -> {
+    format.setARGB(output, index, format.getARGB(input, index) & mask);
+});
+// RGB
+iimg.applyActionRGB((rgb, input, output, index, varStore) -> {
+    int r, g, b, a;
+    // ...
+    rgb[0] = r;
+    rgb[1] = g;
+    rgb[2] = b;
+    rgb[3] = a;
+});
+// HSL
+iimg.applyActionHSL((hsl, input, output, index, varStore) -> {
+    float h, s, l, a;
+    // ...
+    hsl[0] = h;
+    hsl[1] = s;
+    hsl[2] = l;
+    hsl[3] = a;
+});
+// HCL
+iimg.applyActionHCL((hcl, input, output, index, varStore) -> {
+    float h, c, l, a;
+    // ...
+    hsl[0] = h;
+    hsl[1] = c;
+    hsl[2] = l;
+    hsl[3] = a;
+});
+```
