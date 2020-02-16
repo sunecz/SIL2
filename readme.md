@@ -126,3 +126,91 @@ iimg.applyActionHCL((hcl, input, output, index, varStore) -> {
     hsl[3] = a;
 });
 ```
+
+### Image convolution
+To do an image convolution with a kernel, you can use the `convolute2d` method. There is currently available only the 2D version of this method. Note that the kernel **MUST** be normalized.
+```java
+// Apply the Mean filter
+float[] kernel = {
+    0.1f, 0.1f, 0.1f,
+    0.1f, 0.1f, 0.1f,
+    0.1f, 0.1f, 0.1f
+};
+iimg.convolute2d(kernel, numberOfIterations, includeAlphaChannel);
+```
+
+### Individual pixels
+You can also get and set individual pixels of the image.
+```java
+iimg.setPixel(x, y, colorInARGB);
+iimg.getPixel(x, y);
+```
+
+## Color conversions
+This library supports converting to and from these color formats: `RGB`, `HSL`, `HCL`, `LAB`, `XYZ`. To convert a color to another format, use the `Colors` class, or if a specific format (e.g. `BGRA`) is required the `FormatColor` class, or the `NativeColor` class for the native format.
+```java
+// RGB -> HSL
+float[] hsl = new float[3];
+Colors.rgb2hsl(red, green, blue, hsl);
+// Red in BGRA format
+int bgraRed = new FormatColor(BGRAImagePixelFormat.INSTANCE).rgb(255, 0, 0);
+// Red in Native format
+int nativeRed = NativeColor.get().rgb(255, 0, 0);
+```
+
+## Image Utilities
+To crop, rotate, resize, combine, ... an image, you can use the `ImageUtils` class that contains methods for these operations.
+```java
+// Crop an image
+Image image = ImageUtils.crop(image, x, y, width, height);
+// Resize an image
+Image image = ImageUtils.fastresize(image, width, height);
+// Rotate an image
+Image image = ImageUtils.fastrotate(image, rad);
+// ...
+```
+*Most methods are also available for buffers, these do not create a new image object but rather output directly to a given buffer.*
+
+## Matrix Utilities
+To do operations with a matrix (kernel), you can use the `MatrixUtils` class.
+```java
+float[] kernel = { /* ... */ };
+MatrixUtils.rotate(kernel, rad);
+```
+*Currently there is only the rotate() method that in-place rotates a matrix.*
+
+## Other utilities
+There are some more utility classes that can be used for various tasks.
+
+### BufferUtils
+Used to copy or fill a buffer.
+```java
+// Copy a buffer to another buffer
+BufferUtils.buffercopy(source, destination);
+// Fill a buffer with an int value
+BufferUtils.fill(buffer, value, step);
+```
+
+### Pixels
+Used to copy a pixels region.
+```java
+Pixels.copy(source, sourceX, sourceY, sourceStride, destination, destinationX, destinationY, destinationStride, width, height, elementsPerPixel);
+```
+
+### FPSUtils
+Used to measure FPS in JavaFX.
+```
+float fps = FPSUtils.getFPS();
+```
+
+### FastMath
+Used to do math stuff faster.
+```java
+float sin = FastMath.sin(rad);
+float cos = FastMath.cos(rad);
+float pow = FastMath.pow(a, b);
+// ...
+```
+
+## License
+This library is published under the MIT license (https://github.com/sunecz/SIL2/blob/master/license.md).
