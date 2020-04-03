@@ -449,9 +449,9 @@ public final class ImageUtils {
 			Buffer dst, int dstx, int dsty, int dstw, int dsth, int dstStride, int epp) {
 		if((src == null)) throw new NullPointerException("Invalid source array");
 		if((dst == null)) throw new NullPointerException("Invalid destination array");
-		if((srcw <= 0 || srch <= 0 || src.capacity() % (srcw * srch) != 0))
+		if((srcw <= 0 || srch <= 0 || src.capacity() - (srcw * srch) < 0))
 			throw new IllegalArgumentException("Invalid source size");
-		if((dstw <= 0 || dsth <= 0 || dst.capacity() % (dstw * dsth) != 0))
+		if((dstw <= 0 || dsth <= 0 || dst.capacity() - (dstw * dsth) < 0))
 			throw new IllegalArgumentException("Invalid destination size");
 		if((srcx < 0 || srcy < 0))
 			throw new IllegalArgumentException("Invalid source position");
@@ -470,7 +470,7 @@ public final class ImageUtils {
 				c = cols;
 				if((--r == 0))
 					break;
-				offX  = 0;
+				offX  = dstx;
 				offY += srch;
 			}
 		}
