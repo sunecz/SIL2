@@ -164,9 +164,10 @@ public final class ImageUtils {
 			throw new IllegalArgumentException("Invalid source coordinates");
 		if((dsti >= dst.capacity()))
 			throw new IllegalArgumentException("Invalid destination coordinates");
+		Object asrc = src.array(), adst = dst.array();
 		for(int iy = 0; iy < height; ++iy, srci += srcStride, dsti += dstStride) {
 			// Copy whole rows instead of the individual pixels
-			System.arraycopy(src, srci, dst, dsti, width);
+			System.arraycopy(asrc, srci, adst, dsti, width);
 		}
 	}
 	
